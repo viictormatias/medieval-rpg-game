@@ -67,30 +67,16 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: () => 
                     style={{ background: 'linear-gradient(to right, transparent, #f2b90d80, transparent)' }}
                 />
 
-                {/* Emblema */}
-                <div className="relative mb-6">
-                    <div
-                        className="w-20 h-20 rounded-full flex items-center justify-center text-4xl"
-                        style={{
-                            background: 'radial-gradient(circle, #1a1208, #0d0d0d)',
-                            border: '2px solid #f2b90d',
-                            boxShadow: '0 0 20px rgba(242,185,13,0.3), inset 0 0 15px rgba(0,0,0,0.8)',
-                        }}
-                    >
-                        👑
-                    </div>
-                    {/* Glow ring */}
-                    <div className="absolute inset-0 rounded-full"
-                        style={{
-                            boxShadow: '0 0 30px rgba(242,185,13,0.15)',
-                            animation: 'glow-pulse-gold 3s ease-in-out infinite',
-                        }}
+
+
+                <div className="relative mb-4 w-full flex justify-center">
+                    <img
+                        src="/logo.png"
+                        alt="Velmora Logo"
+                        className="w-48 h-auto drop-shadow-[0_0_15px_rgba(242,185,13,0.3)] animate-fade-in"
+                        style={{ filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.5))' }}
                     />
                 </div>
-
-                <h1 className="text-3xl font-black text-white mb-1 title-medieval">
-                    Cinzas e Coroas
-                </h1>
                 <p className="text-[11px] text-gray-500 italic mb-1 uppercase tracking-[0.2em]">
                     Forje seu destino nas sombras
                 </p>
@@ -175,7 +161,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: () => 
 
             {/* Footer */}
             <div className="absolute bottom-4 left-0 right-0 text-center text-[9px] uppercase tracking-[0.4em] text-gray-700 pointer-events-none z-10">
-                Cinzas e Coroas © 2026 • Forjado nas Sombras
+                Velmora © 2026 • Forjado nas Sombras
             </div>
         </div>
     )

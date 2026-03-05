@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Profile, Enemy, getEnemies, getUserInventory } from '@/lib/gameActions'
 import { simulateCombat, Fighter, NarrativeTurn } from '@/combat'
 import { ITEMS as CATALOG_ITEMS } from '@/lib/items'
+import { deriveSoulsStats, SoulsDerivedStats } from '@/lib/soulslike'
 import CharacterPortrait from './CharacterPortrait'
 import StatBar from './StatBar'
 
@@ -19,7 +20,17 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
     const [enemyHp, setEnemyHp] = useState<number>(0)
     const [playerHit, setPlayerHit] = useState<'normal' | 'critical' | false>(false)
     const [enemyHit, setEnemyHit] = useState<'normal' | 'critical' | false>(false)
+    const [soulsSnapshot, setSoulsSnapshot] = useState<SoulsDerivedStats | null>(null)
     const logEndRef = useRef<HTMLDivElement>(null)
+
+    const loadSoulsSnapshot = async () => {
+        const inventory = await getUserInventory(profile.id)
+        const equippedItems = (inventory || [])
+            .filter((inv: any) => inv.is_equipped)
+            .map((inv: any) => CATALOG_ITEMS.find(it => it.id === inv.item_id))
+            .filter(Boolean)
+        setSoulsSnapshot(deriveSoulsStats(profile, equippedItems as any))
+    }
 
     useEffect(() => {
         getEnemies().then(data => {
@@ -29,7 +40,8 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                 setEnemyHp(data[0].hp_max)
             }
         })
-    }, [])
+        loadSoulsSnapshot()
+    }, [profile.id])
 
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -46,10 +58,10 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
         if (target === 'player') {
             setPlayerHit(hitState)
             setTimeout(() => setPlayerHit(false), isCritical ? 800 : 600)
-        } else {
-            setEnemyHit(hitState)
-            setTimeout(() => setEnemyHit(false), isCritical ? 800 : 600)
+            return
         }
+        setEnemyHit(hitState)
+        setTimeout(() => setEnemyHit(false), isCritical ? 800 : 600)
     }
 
     const handleFight = async () => {
@@ -60,31 +72,27 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
         setPlayerHp(profile.hp_current)
         setEnemyHp(selectedEnemy.hp_max)
 
-        // Buscar itens equipados
         const inventory = await getUserInventory(profile.id)
-        const equippedItems = inventory.filter((inv: any) => inv.is_equipped).map((inv: any) => {
-            const spec = CATALOG_ITEMS.find(it => it.id === inv.item_id)
-            return spec
-        }).filter(Boolean)
+        const equippedItems = (inventory || [])
+            .filter((inv: any) => inv.is_equipped)
+            .map((inv: any) => CATALOG_ITEMS.find(it => it.id === inv.item_id))
+            .filter(Boolean)
 
-        // Calcular modificadores
-        const bonuses = { strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 }
-        let weaponName = 'as mãos nulas'
-
+        let weaponName = 'as maos'
         equippedItems.forEach((item: any) => {
             if (item.type === 'weapon') weaponName = item.name
-            Object.entries(item.stats || {}).forEach(([stat, val]) => {
-                if (stat in bonuses) (bonuses as any)[stat] += (val as number)
-            })
         })
+
+        const souls = deriveSoulsStats(profile, equippedItems as any)
+        setSoulsSnapshot(souls)
 
         const playerFighter: Fighter = {
             name: profile.username,
             hp: profile.hp_current,
-            strength: profile.strength + bonuses.strength,
-            defense: profile.defense + bonuses.defense,
-            agility: profile.agility + bonuses.agility,
-            accuracy: profile.accuracy + bonuses.accuracy,
+            strength: souls.attackRating,
+            defense: profile.defense + souls.bonuses.defense,
+            agility: profile.agility + souls.bonuses.agility + souls.dodgeBonus,
+            accuracy: Math.floor((profile.accuracy + souls.bonuses.accuracy) * souls.requirementPenalty),
             stamina: 100,
             weaponName
         }
@@ -100,14 +108,11 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
             weaponName: 'garras'
         }
 
-        // Processa instantaneamente no servidor (ou aqui no client por enquanto)
         const result = simulateCombat(playerFighter, enemyFighter)
 
-        // Efeito Suspense e Ritmo Lento (2.5s)
         for (const turn of result.history) {
             await new Promise(resolve => setTimeout(resolve, 2500))
 
-            // Atualiza HP visualmente e aciona shake
             if (turn.damage > 0) {
                 if (turn.attacker === profile.username) {
                     setEnemyHp(turn.resultHp)
@@ -126,9 +131,7 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
     }
 
     const getLogStyle = (log: NarrativeTurn): React.CSSProperties => {
-        if (log.isMiss) {
-            return { color: '#6b7280', fontWeight: 'normal', background: 'transparent' }
-        }
+        if (log.isMiss) return { color: '#6b7280', fontWeight: 'normal', background: 'transparent' }
         if (log.isCritical) {
             return {
                 color: '#ef4444',
@@ -137,25 +140,17 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                 textShadow: '0 0 10px rgba(220, 38, 38, 0.8)'
             }
         }
-        if (log.attacker === profile.username) {
-            return { color: '#fbbf24', fontWeight: 'normal', background: 'transparent' }
-        }
+        if (log.attacker === profile.username) return { color: '#fbbf24', fontWeight: 'normal', background: 'transparent' }
         return { color: '#f97316', fontWeight: 'normal', background: 'transparent' }
     }
 
-    const playerHpPercent = (playerHp / profile.hp_max) * 100
     const enemyHpMax = selectedEnemy?.hp_max || 1
-    const enemyHpPercent = (enemyHp / enemyHpMax) * 100
-
     const playerIsWinner = winner === profile.username
 
     return (
         <div className="flex flex-col gap-6">
-            {/* ===== PAINÉIS DE COMBATE ===== */}
             <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-
-                {/* Player Panel */}
-                <div className={`medieval-border p-5 flex flex-col items-center gap-3 text-center transition-all`}>
+                <div className="medieval-border p-5 flex flex-col items-center gap-3 text-center transition-all">
                     <CharacterPortrait
                         src={null}
                         fallbackEmoji="🛡️"
@@ -171,21 +166,41 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 w-full mt-1">
-                        {[
-                            { label: 'FOR', value: profile.strength },
-                            { label: 'DEF', value: profile.defense },
-                            { label: 'AGI', value: profile.agility },
-                            { label: 'PRE', value: profile.accuracy },
-                        ].map(s => (
-                            <div key={s.label} className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
-                                <span className="text-gray-500 uppercase">{s.label}</span>
-                                <span className="text-gold font-bold font-mono">{s.value}</span>
-                            </div>
-                        ))}
+                        <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                            <span className="text-gray-500 uppercase">AR</span>
+                            <span className="text-gold font-bold font-mono">{soulsSnapshot?.attackRating ?? profile.strength}</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                            <span className="text-gray-500 uppercase">DEF</span>
+                            <span className="text-gold font-bold font-mono">{profile.defense + (soulsSnapshot?.bonuses.defense || 0)}</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                            <span className="text-gray-500 uppercase">AGI</span>
+                            <span className="text-gold font-bold font-mono">
+                                {profile.agility + (soulsSnapshot?.bonuses.agility || 0) + (soulsSnapshot?.dodgeBonus || 0)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                            <span className="text-gray-500 uppercase">PRE</span>
+                            <span className="text-gold font-bold font-mono">
+                                {Math.floor((profile.accuracy + (soulsSnapshot?.bonuses.accuracy || 0)) * (soulsSnapshot?.requirementPenalty || 1))}
+                            </span>
+                        </div>
                     </div>
+
+                    {soulsSnapshot && (
+                        <div className="w-full mt-2 text-[9px] uppercase tracking-wider text-gray-500 border-t border-[#2a2a2a] pt-2 space-y-1">
+                            <div className="flex justify-between">
+                                <span>Carga</span>
+                                <span className="text-gold">{soulsSnapshot.equipTier} ({soulsSnapshot.equipLoadPct.toFixed(1)}%)</span>
+                            </div>
+                            {soulsSnapshot.unmetRequirements.length > 0 && (
+                                <div className="text-red-400">Requisitos faltando: {soulsSnapshot.unmetRequirements.join(', ')}</div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* VS Indicator */}
                 <div className="flex flex-col items-center gap-1 px-2">
                     <div className="vs-indicator text-3xl font-black text-gold">VS</div>
                     {isFighting && (
@@ -193,7 +208,6 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                     )}
                 </div>
 
-                {/* Enemy Panel */}
                 <div className="medieval-border p-5 flex flex-col items-center gap-3 text-center">
                     <CharacterPortrait
                         src={null}
@@ -211,21 +225,25 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
 
                     {selectedEnemy && (
                         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 w-full mt-1">
-                            {[
-                                { label: 'FOR', value: selectedEnemy.strength },
-                                { label: 'DEF', value: 5 },
-                                { label: 'AGI', value: selectedEnemy.agility },
-                                { label: 'PRE', value: selectedEnemy.precision },
-                            ].map(s => (
-                                <div key={s.label} className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
-                                    <span className="text-gray-500 uppercase">{s.label}</span>
-                                    <span className="text-red-400 font-bold font-mono">{s.value}</span>
-                                </div>
-                            ))}
+                            <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                                <span className="text-gray-500 uppercase">FOR</span>
+                                <span className="text-red-400 font-bold font-mono">{selectedEnemy.strength}</span>
+                            </div>
+                            <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                                <span className="text-gray-500 uppercase">DEF</span>
+                                <span className="text-red-400 font-bold font-mono">5</span>
+                            </div>
+                            <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                                <span className="text-gray-500 uppercase">AGI</span>
+                                <span className="text-red-400 font-bold font-mono">{selectedEnemy.agility}</span>
+                            </div>
+                            <div className="flex justify-between text-[9px] border-b border-[#2a2a2a] py-0.5">
+                                <span className="text-gray-500 uppercase">PRE</span>
+                                <span className="text-red-400 font-bold font-mono">{selectedEnemy.precision}</span>
+                            </div>
                         </div>
                     )}
 
-                    {/* Enemy selector */}
                     <div className="w-full mt-2 ornament-divider text-[9px]">INIMIGO</div>
                     <select
                         className="w-full bg-[#111] border border-[#3a3a3a] text-white text-xs p-2 outline-none focus:border-red-600 transition-colors rounded-sm"
@@ -233,13 +251,12 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                         disabled={isFighting}
                     >
                         {enemies.map(en => (
-                            <option key={en.id} value={en.id}>{en.name} — Nvl {en.level} (HP: {en.hp_max})</option>
+                            <option key={en.id} value={en.id}>{en.name} - Nvl {en.level} (HP: {en.hp_max})</option>
                         ))}
                     </select>
                 </div>
             </div>
 
-            {/* ===== BOTÃO DE COMBATE ===== */}
             <div className="flex justify-center">
                 <button
                     onClick={handleFight}
@@ -256,15 +273,10 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                 </button>
             </div>
 
-            {/* ===== COMBAT LOG ===== */}
-            <div className="medieval-border bg-black/50 rounded-sm overflow-hidden"
-                style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.6)' }}>
-                <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a2a]"
-                    style={{ background: 'linear-gradient(90deg, rgba(242,185,13,0.05), transparent)' }}>
-                    <span className="text-[11px] font-bold text-gold uppercase tracking-[0.3em]">📜 Crônica do Combate</span>
-                    {combatLog.length > 0 && (
-                        <span className="text-[9px] text-gray-600 font-mono">{combatLog.length} turnos</span>
-                    )}
+            <div className="medieval-border bg-black/50 rounded-sm overflow-hidden" style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.6)' }}>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a2a]" style={{ background: 'linear-gradient(90deg, rgba(242,185,13,0.05), transparent)' }}>
+                    <span className="text-[11px] font-bold text-gold uppercase tracking-[0.3em]">Cronica do Combate</span>
+                    {combatLog.length > 0 && <span className="text-[9px] text-gray-600 font-mono">{combatLog.length} turnos</span>}
                 </div>
 
                 <div className="h-56 overflow-y-auto p-3 font-mono text-xs space-y-0.5 scroll-smooth">
@@ -310,7 +322,7 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
                                 className="text-base font-black uppercase tracking-widest title-medieval"
                                 style={{ color: playerIsWinner ? '#f2b90d' : '#ef4444' }}
                             >
-                                {playerIsWinner ? 'Vitória!' : 'Derrota!'}
+                                {playerIsWinner ? 'Vitoria!' : 'Derrota!'}
                             </div>
                             <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">
                                 {winner} prevalece

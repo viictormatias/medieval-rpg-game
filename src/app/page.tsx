@@ -136,10 +136,12 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="flex flex-col items-center gap-2 bg-black/40 backdrop-blur-sm p-4 rounded-lg border border-gold/10">
-            <h1 className="text-3xl font-black text-gold title-medieval tracking-[0.2em] drop-shadow-lg">
-              Cinzas e Coroas
-            </h1>
+          <div className="flex flex-col items-center gap-2 bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-gold/10">
+            <img
+              src="/logo.png"
+              alt="Velmora Logo"
+              className="w-56 h-auto drop-shadow-[0_0_20px_rgba(242,185,13,0.4)] mb-2"
+            />
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-gold rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <div className="w-1.5 h-1.5 bg-gold rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -242,7 +244,7 @@ export default function Dashboard() {
       <footer className="fixed bottom-0 left-0 right-0 py-3 text-center text-[9px] uppercase tracking-[0.4em] text-gray-700 pointer-events-none z-20"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}
       >
-        Cinzas e Coroas © 2026 • Forjado nas Sombras
+        Velmora © 2026 • Forjado nas Sombras
       </footer>
     </main>
   )

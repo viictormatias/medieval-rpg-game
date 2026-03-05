@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cinzas e Coroas — Medieval RPG",
+  title: "Velmora — Medieval RPG",
   description: "Um RPG Dark Medieval imersivo.",
 };
 

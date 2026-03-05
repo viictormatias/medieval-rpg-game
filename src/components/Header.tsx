@@ -1,8 +1,10 @@
 'use client'
 
-import { Profile } from '@/lib/gameActions'
+import { Profile, getUserInventory } from '@/lib/gameActions'
 import StatBar from './StatBar'
 import CharacterPortrait from './CharacterPortrait'
+import { getStatBonuses } from '@/lib/stats'
+import { useState, useEffect } from 'react'
 
 // Derivar classe do personagem baseada no nível
 function getPlayerClass(level: number): string {
@@ -19,8 +21,17 @@ function xpForNextLevel(level: number): number {
 }
 
 export default function Header({ profile }: { profile: Profile }) {
+    const [invItems, setInvItems] = useState<any[]>([])
+
+    useEffect(() => {
+        getUserInventory(profile.id).then(items => setInvItems(items || []))
+    }, [profile.id])
+
+    const bonuses = getStatBonuses(invItems)
     const playerClass = getPlayerClass(profile.level)
     const xpNeeded = xpForNextLevel(profile.level)
+
+    const totalHpMax = profile.hp_max + (bonuses.vigor * 10)
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#3a3a3a] shadow-2xl"
@@ -37,32 +48,43 @@ export default function Header({ profile }: { profile: Profile }) {
 
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-4 py-3">
 
-                {/* ====== AVATAR + INFO ESQUERDA ====== */}
-                <div className="flex items-center gap-4">
-                    <CharacterPortrait
-                        src={null}
-                        fallbackEmoji="⚔️"
-                        borderColor="gold"
-                        size="sm"
-                    />
+                {/* ====== LOGO + AVATAR + INFO ESQUERDA ====== */}
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                    {/* Logo do Jogo */}
+                    <div className="flex-shrink-0">
+                        <img
+                            src="/logo.png"
+                            alt="Velmora Logo"
+                            className="h-16 w-auto drop-shadow-[0_0_10px_rgba(242,185,13,0.2)]"
+                        />
+                    </div>
 
-                    <div>
-                        <h1 className="text-base font-bold text-white leading-tight tracking-wide">
-                            {profile.username}
-                        </h1>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-gold">
-                                Nível {profile.level}
-                            </span>
-                            <span className="text-[10px] text-gray-600">•</span>
-                            <span className="text-[10px] uppercase tracking-widest text-amber-600 font-bold">
-                                {playerClass}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-[10px] text-yellow-600">◈</span>
-                            <span className="text-[10px] text-yellow-400 font-bold font-mono">{profile.gold}</span>
-                            <span className="text-[10px] text-gray-600 font-bold ml-1">Gold</span>
+                    <div className="flex items-center gap-4">
+                        <CharacterPortrait
+                            src={null}
+                            fallbackEmoji="⚔️"
+                            borderColor="gold"
+                            size="sm"
+                        />
+
+                        <div>
+                            <h1 className="text-base font-bold text-white leading-tight tracking-wide">
+                                {profile.username}
+                            </h1>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gold">
+                                    Nível {profile.level}
+                                </span>
+                                <span className="text-[10px] text-gray-600">•</span>
+                                <span className="text-[10px] uppercase tracking-widest text-amber-600 font-bold">
+                                    {playerClass}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[10px] text-yellow-600">◈</span>
+                                <span className="text-[10px] text-yellow-400 font-bold font-mono">{profile.gold}</span>
+                                <span className="text-[10px] text-gray-600 font-bold ml-1">Gold</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -75,7 +97,7 @@ export default function Header({ profile }: { profile: Profile }) {
                         <div className="flex-1">
                             <StatBar
                                 value={profile.hp_current}
-                                max={profile.hp_max}
+                                max={totalHpMax}
                                 type="hp"
                                 label="HP"
                                 showValues

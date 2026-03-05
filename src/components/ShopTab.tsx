@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Profile, buyItem } from '@/lib/gameActions'
-import { ITEMS, Item } from '@/lib/items'
+import { ITEMS, Item, ItemType } from '@/lib/items'
+import { checkItemRequirements } from '@/lib/soulslike'
 
 interface ShopTabProps {
     profile: Profile
@@ -11,18 +12,26 @@ interface ShopTabProps {
 
 export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
     const [buyingId, setBuyingId] = useState<string | null>(null)
-    const [filter, setFilter] = useState<'all' | 'weapon' | 'armor'>('all')
+    const [filter, setFilter] = useState<'all' | ItemType>('all')
+    const FILTER_LABELS: Record<'all' | ItemType, string> = {
+        all: 'Tudo',
+        weapon: 'Armas',
+        shield: 'Escudos',
+        helmet: 'Capacetes',
+        chest: 'Peitorais',
+        gloves: 'Luvas',
+        legs: 'Calcas',
+        boots: 'Botas'
+    }
 
     const handleBuy = async (item: Item) => {
         if (profile.gold < item.price) return
         setBuyingId(item.id)
 
         const success = await buyItem(profile.id, item.id, item.price)
-        if (success) {
-            onRefresh()
-        } else {
-            alert('Falha na compra. Tente novamente.')
-        }
+        if (success) onRefresh()
+        else alert('Falha na compra. Tente novamente.')
+
         setBuyingId(null)
     }
 
@@ -35,14 +44,13 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                     💰 Mercador da Cidadela
                 </h2>
                 <div className="flex gap-2">
-                    {['all', 'weapon', 'armor'].map((f) => (
+                    {(['all', 'weapon', 'shield', 'helmet', 'chest', 'gloves', 'legs', 'boots'] as Array<'all' | ItemType>).map((f) => (
                         <button
                             key={f}
-                            onClick={() => setFilter(f as any)}
-                            className={`px-3 py-1 text-[10px] uppercase font-bold border transition-all ${filter === f ? 'border-gold text-gold bg-gold/5' : 'border-[#2a2a2a] text-gray-500'
-                                }`}
+                            onClick={() => setFilter(f)}
+                            className={`px-3 py-1 text-[10px] uppercase font-bold border transition-all ${filter === f ? 'border-gold text-gold bg-gold/5' : 'border-[#2a2a2a] text-gray-500'}`}
                         >
-                            {f === 'all' ? 'Tudo' : f === 'weapon' ? 'Armas' : 'Armaduras'}
+                            {FILTER_LABELS[f]}
                         </button>
                     ))}
                 </div>
@@ -51,6 +59,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredItems.map((item) => {
                     const canAfford = profile.gold >= item.price
+                    const reqStatus = checkItemRequirements(profile, item)
                     return (
                         <div key={item.id} className="medieval-border p-4 bg-[#0d0d0d] flex gap-4 items-start group">
                             <div className="w-16 h-16 bg-[#111] border border-[#2a2a2a] flex items-center justify-center text-3xl rounded-sm">
@@ -62,6 +71,18 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                     <span className="text-gold font-mono font-bold text-xs">{item.price} G</span>
                                 </div>
                                 <p className="text-[10px] text-gray-500 leading-tight mb-3 italic">"{item.description}"</p>
+
+                                <div className="text-[9px] text-gray-400 mb-3 flex gap-3 uppercase">
+                                    <span>Peso: <span className="text-gold">{item.weight.toFixed(1)}</span></span>
+                                    {item.scaling && <span>Scaling: <span className="text-gold">{Object.entries(item.scaling).map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`).join(' | ')}</span></span>}
+                                </div>
+
+                                {item.requirements && (
+                                    <div className={`text-[9px] mb-3 ${reqStatus.meets ? 'text-green-400' : 'text-red-400'}`}>
+                                        Requisitos: {Object.entries(item.requirements).map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`).join(' | ')}
+                                        {!reqStatus.meets && ` (Faltando: ${reqStatus.unmetLabels.join(', ')})`}
+                                    </div>
+                                )}
 
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     {Object.entries(item.stats).map(([stat, val]) => (
@@ -78,8 +99,8 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                     onClick={() => handleBuy(item)}
                                     disabled={!canAfford || buyingId === item.id}
                                     className={`w-full py-2 text-[10px] uppercase font-bold transition-all ${canAfford
-                                            ? 'bg-gold/10 border border-gold text-gold hover:bg-gold hover:text-black'
-                                            : 'bg-gray-900 border border-gray-800 text-gray-600 grayscale cursor-not-allowed'
+                                        ? 'bg-gold/10 border border-gold text-gold hover:bg-gold hover:text-black'
+                                        : 'bg-gray-900 border border-gray-800 text-gray-600 grayscale cursor-not-allowed'
                                         }`}
                                 >
                                     {buyingId === item.id ? 'Processando...' : canAfford ? 'Comprar Item' : 'Ouro Insuficiente'}
