@@ -48,10 +48,27 @@ export default function Dashboard() {
   // ===== TELA DE ERRO =====
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-center px-4"
-        style={{ background: 'radial-gradient(ellipse at center, #1a0808 0%, #0d0d0d 70%)' }}
+      <div className="flex items-center justify-center min-h-screen text-center px-4 relative overflow-hidden"
+        style={{ background: '#0d0d0d' }}
       >
-        <div className="max-w-md p-8 bg-black/60 border border-red-900/50 backdrop-blur-sm space-y-6">
+        {/* Imagem de fundo persistente */}
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 scale-105"
+          style={{
+            backgroundImage: 'url("/loadingscreen.jpeg")',
+            filter: 'grayscale(0.4) contrast(1.1) brightness(0.7)'
+          }}
+        />
+
+        {/* Overlay Noir Gradiente */}
+        <div
+          className="absolute inset-0 z-1"
+          style={{
+            background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.9) 100%)'
+          }}
+        />
+
+        <div className="relative z-10 max-w-md p-8 bg-black/60 border border-red-900/50 backdrop-blur-sm space-y-6">
           <div className="text-6xl animate-pulse">⚠️</div>
           <h2 className="text-xl font-bold text-red-500 uppercase tracking-widest title-medieval">Erro de Conexão</h2>
           <p className="text-gray-400 text-sm leading-relaxed">

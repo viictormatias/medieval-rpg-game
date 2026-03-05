@@ -32,24 +32,34 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: () => 
 
     return (
         <div className="relative flex items-center justify-center min-h-screen overflow-hidden"
-            style={{ background: 'radial-gradient(ellipse at center, #1a1208 0%, #0d0d0d 70%)' }}
+            style={{ background: '#0d0d0d' }}
         >
-            <ParticleBackground count={30} />
-
-            {/* Decoração de fundo: círculo de brilho central */}
+            {/* Imagem de fundo persistente */}
             <div
-                className="absolute inset-0 z-0 pointer-events-none"
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 scale-105"
                 style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(242,185,13,0.04) 0%, transparent 60%)',
+                    backgroundImage: 'url("/loadingscreen.jpeg")',
+                    filter: 'grayscale(0.2) contrast(1.1)'
                 }}
             />
 
-            {/* Card de Login */}
+            {/* Overlay Noir Gradiente */}
             <div
-                className="relative z-10 medieval-border p-8 max-w-sm w-full mx-4 flex flex-col items-center text-center"
+                className="absolute inset-0 z-1"
                 style={{
-                    background: 'linear-gradient(160deg, rgba(20,16,8,0.97), rgba(10,10,10,0.98))',
-                    boxShadow: '0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(242,185,13,0.05)',
+                    background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%)'
+                }}
+            />
+
+            <ParticleBackground count={30} />
+
+            {/* Card de Login Glassificado */}
+            <div
+                className="relative z-10 medieval-border p-8 max-w-sm w-full mx-4 flex flex-col items-center text-center backdrop-blur-md"
+                style={{
+                    background: 'linear-gradient(160deg, rgba(20,16,8,0.7), rgba(10,10,10,0.8))',
+                    boxShadow: '0 0 60px rgba(0,0,0,0.9), 0 0 30px rgba(242,185,13,0.1)',
+                    border: '1px solid rgba(242,185,13,0.2)',
                 }}
             >
                 {/* Linha superior dourada */}
