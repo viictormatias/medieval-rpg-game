@@ -11,7 +11,7 @@ import StatusTab from '@/components/StatusTab'
 import LoginScreen from '@/components/LoginScreen'
 import ClassSelectionScreen from '@/components/ClassSelectionScreen'
 import ParticleBackground from '@/components/ParticleBackground'
-import { supabase } from '@/lib/supabase'
+import { supabase, isConfigValid, hasUrl, hasKey } from '@/lib/supabase'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -22,9 +22,13 @@ export default function Dashboard() {
 
   const refreshProfile = async () => {
     try {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized. Check your environment variables (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY).')
+      if (!isConfigValid) {
+        let missing = []
+        if (!hasUrl) missing.push('URL (NEXT_PUBLIC_SUPABASE_URL)')
+        if (!hasKey) missing.push('Chave (NEXT_PUBLIC_SUPABASE_ANON_KEY)')
+        throw new Error(`Incompleto: ${missing.join(' e ')}. Verifique o painel do Vercel.`)
       }
+
       const { data: { session: s } } = await supabase.auth.getSession()
       setSession(s)
       const data = await ensureProfile()
