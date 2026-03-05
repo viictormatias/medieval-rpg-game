@@ -18,18 +18,54 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'camp' | 'arena' | 'shop' | 'inventory' | 'status'>('camp')
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const refreshProfile = async () => {
-    const { data: { session: s } } = await supabase.auth.getSession()
-    setSession(s)
-    const data = await ensureProfile()
-    setProfile(data)
-    setLoading(false)
+    try {
+      if (!supabase) {
+        throw new Error('Supabase client not initialized. Check your environment variables (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY).')
+      }
+      const { data: { session: s } } = await supabase.auth.getSession()
+      setSession(s)
+      const data = await ensureProfile()
+      setProfile(data)
+    } catch (err: any) {
+      console.error('Erro ao carregar perfil:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     refreshProfile()
   }, [])
+
+  // ===== TELA DE ERRO =====
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-center px-4"
+        style={{ background: 'radial-gradient(ellipse at center, #1a0808 0%, #0d0d0d 70%)' }}
+      >
+        <div className="max-w-md p-8 bg-black/60 border border-red-900/50 backdrop-blur-sm space-y-6">
+          <div className="text-6xl animate-pulse">⚠️</div>
+          <h2 className="text-xl font-bold text-red-500 uppercase tracking-widest title-medieval">Erro de Conexão</h2>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Não foi possível conectar ao Reino de Supabase. Isso geralmente ocorre por falta de configuração no Vercel.
+          </p>
+          <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-400 text-[10px] font-mono break-all text-left">
+            {error}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 border border-red-500/50 text-red-500 text-xs font-bold uppercase tracking-widest hover:bg-red-500 hover:text-black transition-all"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ===== TELA DE LOADING =====
   if (loading) {
