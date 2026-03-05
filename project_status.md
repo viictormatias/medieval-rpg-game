@@ -22,6 +22,8 @@
 
 ## 4. Erros ou Bloqueios Conhecidos
 - **Nenhum erro de compilação**: O servidor Next.JS agora builda sem conflitos.
+- **Vercel Build Fix**: Implementada inicialização segura do Supabase para evitar crash durante o build/prerendering quando as variáveis de ambiente não estão presentes.
+- **Pendência de Configuração**: O usuário deve configurar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no painel do Vercel para que as funcionalidades de banco de dados operem em produção.
 - **AVISO (Persistência)**: Não houve ainda conexão do backend da tabela do banco `inventory` (atualmente o repositório consome dados mockados localmente neste tab). 
 
 ## 5. Próximos Passos Sugeridos
