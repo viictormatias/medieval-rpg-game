@@ -45,6 +45,14 @@ export default function Dashboard() {
     refreshProfile()
   }, [])
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshProfile()
+    }, 60_000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   // ===== TELA DE ERRO =====
   if (error) {
     return (

@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 
+const MAX_ENERGY = 100
+const ENERGY_REGEN_PER_TICK = 1
+const ENERGY_REGEN_INTERVAL_SECONDS = 60
+
 export interface Profile {
     id: string
     username: string
@@ -46,6 +50,40 @@ export type InitialStatAllocation = Partial<Record<InitialStatKey, number>>
 export const ONBOARDING_STAT_POINTS = 8
 export const ONBOARDING_MAX_PER_STAT = 4
 
+function getRegeneratedEnergy(currentEnergy: number, updatedAt?: string | null): number {
+    if (!updatedAt || currentEnergy >= MAX_ENERGY) return Math.min(MAX_ENERGY, currentEnergy)
+
+    const lastUpdateMs = new Date(updatedAt).getTime()
+    if (!Number.isFinite(lastUpdateMs)) return Math.min(MAX_ENERGY, currentEnergy)
+
+    const elapsedSeconds = Math.floor((Date.now() - lastUpdateMs) / 1000)
+    if (elapsedSeconds < ENERGY_REGEN_INTERVAL_SECONDS) return Math.min(MAX_ENERGY, currentEnergy)
+
+    const recoveredTicks = Math.floor(elapsedSeconds / ENERGY_REGEN_INTERVAL_SECONDS)
+    const recoveredEnergy = recoveredTicks * ENERGY_REGEN_PER_TICK
+
+    return Math.min(MAX_ENERGY, currentEnergy + recoveredEnergy)
+}
+
+async function syncEnergyRegen(profile: Profile & { updated_at?: string | null }): Promise<Profile> {
+    const nextEnergy = getRegeneratedEnergy(profile.energy, profile.updated_at)
+    if (nextEnergy <= profile.energy) return profile
+
+    const { data: updatedProfile, error } = await supabase
+        .from('profiles')
+        .update({ energy: nextEnergy })
+        .eq('id', profile.id)
+        .select('*')
+        .single()
+
+    if (error || !updatedProfile) {
+        console.error('Erro ao regenerar energia:', error)
+        return { ...profile, energy: nextEnergy }
+    }
+
+    return updatedProfile
+}
+
 /**
  * Tenta buscar o perfil do usuário logado (anônimo ou credencial).
  */
@@ -70,7 +108,7 @@ export async function ensureProfile(): Promise<Profile | null> {
         return null // Perfil existe mas sem classe selecionada
     }
 
-    return profile
+    return await syncEnergyRegen(profile)
 }
 
 export async function createCharacter(
@@ -237,6 +275,18 @@ export async function getEnemies(): Promise<Enemy[]> {
 }
 
 export async function startJobAction(profileId: string, job: Job) {
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .single()
+
+    if (profileError || !profile) return false
+
+    const normalizedProfile = await syncEnergyRegen(profile)
+    if (normalizedProfile.current_job_id) return false
+    if (normalizedProfile.energy < job.energy_cost) return false
+
     const finishAt = new Date()
     finishAt.setSeconds(finishAt.getSeconds() + job.duration_seconds)
 
@@ -252,16 +302,27 @@ export async function startJobAction(profileId: string, job: Job) {
 }
 
 export async function claimJobAction(profile: Profile, job: Job) {
+    const { data: latestProfile, error: getError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profile.id)
+        .single()
+
+    if (getError || !latestProfile) return false
+
+    const normalizedProfile = await syncEnergyRegen(latestProfile)
+    const energyAfterClaim = Math.max(0, normalizedProfile.energy - job.energy_cost)
+
     const { error } = await supabase
         .from('profiles')
         .update({
-            xp: profile.xp + job.reward_xp,
-            gold: profile.gold + job.reward_gold,
-            energy: Math.max(0, profile.energy - job.energy_cost),
+            xp: normalizedProfile.xp + job.reward_xp,
+            gold: normalizedProfile.gold + job.reward_gold,
+            energy: energyAfterClaim,
             current_job_id: null,
             job_finish_at: null
         })
-        .eq('id', profile.id)
+        .eq('id', normalizedProfile.id)
 
     return !error
 }

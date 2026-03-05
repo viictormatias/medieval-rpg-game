@@ -5,8 +5,9 @@ Projeto em fase avancada com UI dark medieval e mecanicas centrais no estilo Sou
 
 O game agora combina:
 - onboarding com planejamento de build
-- sistema de equipamentos multi-slot
+- sistema de equipamentos multi-slot com paperdoll visual de silhueta humana
 - combate com calculos de carga, requisitos e escalonamento
+- tela de status organizada com todos os dados visíveis
 - base pronta para retratos de classe gerados por IA
 
 ## 2. Funcionalidades Implementadas
@@ -23,42 +24,33 @@ O game agora combina:
 - `ArenaTab` atualizado para consumir estatisticas derivadas do sistema Souls-like.
 - Painel de combate agora exibe estado da carga e alertas de requisito faltando.
 
-### Inventario e Equipamentos
-- Paperdoll ampliado para:
-  - arma
-  - escudo
-  - capacete
-  - peitoral
-  - luvas
-  - calcas
-  - botas
-- Equipar respeita tipo de slot e requisitos do item.
+### Inventario e Equipamentos (atualizado)
+- Paperdoll redesenhado com layout de silhueta humana:
+  - Coluna central (de cima para baixo): Capacete → Peitoral (com SVG de silhueta) → Luvas → Calças → Botas
+  - Coluna esquerda: Arma + Escudo + painel de bônus de stats
+  - Coluna direita: Resumo Souls-like (carga, tier, AR) + lista de itens equipados
+  - Slots com tooltip rico (stats, raridade, requisitos, peso)
+  - Drag & drop entre bolsa e paperdoll mantido
+  - Grid da bolsa (10×3) com hover scale e borda por raridade
+
+### Tela de Status (atualizado)
+- Removido: texto "Resumo Souls-like"
+- Cabeçalho do personagem com avatar, nome, nível e build archetype
+- Barras animadas de HP e XP
+- Cards de atributos com pips coloridos por stat + botão de gasto de ponto
+- Painel de combate à direita com: Attack Rating, Build, Carga (barra visual + tier + %), Bônus Esquiva, Penalidade Stamina, aviso de requisitos faltando
+- Painel separado de Bônus de Equipamento
 
 ### Itens e Loja
 - Catalogo de itens expandido com:
-  - `weight`
-  - `requirements`
-  - `scaling`
-  - novos tipos de item
+  - `weight`, `requirements`, `scaling`, novos tipos de item
 - Loja com filtros por todos os slots e informacoes detalhadas de build.
-- Itens adicionados:
-  - 5 `helmet`
-  - 5 `gloves`
-  - 5 `legs`
-  - 5 `boots`
-  - peitorais existentes convertidos para tipo `chest`
+- Itens: 5 helmet, 5 gloves, 5 legs, 5 boots, peitorais do tipo `chest`
 
 ### Onboarding de Personagem
 - Criacao de personagem com distribuicao inicial de status.
-- Regras:
-  - 8 pontos totais obrigatorios
-  - maximo 4 por atributo
-  - validacao dupla (frontend/backend)
-- Presets competitivos:
-  - Balanceada
-  - Forca
-  - Destreza
-  - Tanque
+- 8 pontos totais obrigatorios, maximo 4 por atributo, validacao dupla (frontend/backend)
+- Presets: Balanceada, Forca, Destreza, Tanque
 
 ### Google AI / Nano Banana
 - API key validada e modelos disponiveis consultados.
@@ -73,11 +65,13 @@ O game agora combina:
 - Para desbloquear: habilitar billing/quota no Google AI Studio/Cloud.
 
 ## 4. Qualidade Tecnica
-- `npx tsc --noEmit` passando para as alteracoes recentes.
+- `npx tsc --noEmit` passando para todas as alteracoes recentes (InventoryTab + StatusTab).
 - Existem warnings/erros de lint preexistentes no projeto em arquivos antigos.
 
 ## 5. Proximos Passos Sugeridos
-1. Ativar quota de imagem no Google AI e rodar `node scripts/generate-class-images.mjs`.
-2. Balancear curva de progressao por classe (soft caps e custo por level).
-3. Persistir no banco metricas de build derivadas (ex.: attack rating e equip tier) para analytics.
-4. Revisar lint legacy para reduzir ruido tecnico nas proximas sprints.
+1. Adicionar animação de transição ao equipar/desequipar itens no paperdoll.
+2. Incluir silhueta SVG mais detalhada ou sprite de personagem no centro do paperdoll.
+3. Ativar quota de imagem no Google AI e rodar `node scripts/generate-class-images.mjs`.
+4. Balancear curva de progressao por classe (soft caps e custo por level).
+5. Persistir no banco metricas de build derivadas (ex.: attack rating e equip tier) para analytics.
+6. Revisar lint legacy para reduzir ruido tecnico nas proximas sprints.
