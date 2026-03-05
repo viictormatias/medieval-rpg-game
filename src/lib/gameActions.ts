@@ -17,8 +17,10 @@ export interface Profile {
     accuracy: number
     vigor: number
     stat_points_available: number
+    class: string
 }
 
+export type ClassType = 'Cavaleiro' | 'Nobre' | 'Errante'
 export interface Job {
     id: string
     title: string
@@ -56,24 +58,119 @@ export async function ensureProfile(): Promise<Profile | null> {
         .single()
 
     if (profileError || !profile) {
-        console.warn('Perfil não encontrado, tentando criar manualmente...')
-        const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{
-                id: currentUser.id,
-                username: `Viajante_${currentUser.id.slice(0, 4)}`,
-                gold: 100,
-                energy: 100,
-                hp_current: 100,
-                hp_max: 100
-            }])
-            .select('*')
-            .single()
+        return null // Precisamos de seleção de classe
+    }
 
-        return createError ? null : newProfile
+    if (!profile.class) {
+        return null // Perfil existe mas sem classe selecionada
     }
 
     return profile
+}
+
+export async function createCharacter(userId: string, username: string, classType: ClassType): Promise<Profile | null> {
+    const classStats = {
+        'Cavaleiro': { hp_max: 120, strength: 10, defense: 10, agility: 5, accuracy: 5, vigor: 10, gold: 50 },
+        'Nobre': { hp_max: 100, strength: 5, defense: 5, agility: 10, accuracy: 10, vigor: 5, gold: 200 },
+        'Errante': { hp_max: 100, strength: 7, defense: 7, agility: 7, accuracy: 7, vigor: 7, gold: 100 }
+    }[classType]
+
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .insert([{
+            id: userId,
+            username,
+            class: classType,
+            ...classStats,
+            hp_current: classStats.hp_max,
+            energy: 100,
+            level: 1,
+            xp: 0,
+            stat_points_available: 0
+        }])
+        .select('*')
+        .single()
+
+    if (error) {
+        console.error('Erro ao criar personagem:', error)
+        return null
+    }
+
+    // Errante começa com uma adaga
+    if (classType === 'Errante') {
+        await buyItem(userId, 'rusty_dagger', 0)
+        // Equipar automaticamente
+        const { data: inv } = await supabase.from('inventory').select('id').eq('profile_id', userId).eq('item_id', 'rusty_dagger').single()
+        if (inv) await toggleEquip(userId, inv.id)
+    }
+
+    return profile
+}
+
+export async function getUserInventory(profileId: string) {
+    const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('profile_id', profileId)
+
+    return error ? [] : data
+}
+
+export async function buyItem(profileId: string, itemId: string, price: number): Promise<boolean> {
+    // 1. Verificar Gold
+    const { data: profile } = await supabase.from('profiles').select('gold').eq('id', profileId).single()
+    if (!profile || profile.gold < price) return false
+
+    // 2. Deduzir Gold
+    const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ gold: profile.gold - price })
+        .eq('id', profileId)
+
+    if (updateError) return false
+
+    // 3. Adicionar ao inventário
+    const { error: invError } = await supabase
+        .from('inventory')
+        .insert([{ profile_id: profileId, item_id: itemId }])
+
+    return !invError
+}
+
+export async function toggleEquip(profileId: string, inventoryId: string): Promise<boolean> {
+    // 1. Pegar o item atual
+    const { data: item } = await supabase.from('inventory').select('*').eq('id', inventoryId).single()
+    if (!item) return false
+
+    const isCurrentlyEquipped = item.is_equipped
+
+    if (!isCurrentlyEquipped) {
+        // Se for equipar, precisamos desequipar o outro do mesmo tipo primeiro
+        // (Aqui precisaríamos saber o tipo, mas como passamos o CATALOG_ITEMS para o front, o front gerencia isso?)
+        // De forma segura, pegamos o catálogo
+        const { ITEMS } = await import('./items')
+        const itemSpec = ITEMS.find(it => it.id === item.item_id)
+        if (!itemSpec) return false
+
+        // Buscar todos os itens do inventário para desequipar o mesmo tipo
+        const { data: fullInv } = await supabase.from('inventory').select('*').eq('profile_id', profileId).eq('is_equipped', true)
+
+        if (fullInv) {
+            for (const invEntry of fullInv) {
+                const spec = ITEMS.find(it => it.id === invEntry.item_id)
+                if (spec && spec.type === itemSpec.type) {
+                    await supabase.from('inventory').update({ is_equipped: false }).eq('id', invEntry.id)
+                }
+            }
+        }
+    }
+
+    const { error } = await supabase
+        .from('inventory')
+        .update({ is_equipped: !isCurrentlyEquipped })
+        .eq('id', inventoryId)
+
+    return !error
 }
 
 export async function loginWithEmail(email: string, password: string) {

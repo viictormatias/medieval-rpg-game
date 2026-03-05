@@ -5,17 +5,23 @@ import { ensureProfile, Profile } from '@/lib/gameActions'
 import Header from '@/components/Header'
 import CampTab from '@/components/CampTab'
 import ArenaTab from '@/components/ArenaTab'
+import ShopTab from '@/components/ShopTab'
 import InventoryTab from '@/components/InventoryTab'
 import StatusTab from '@/components/StatusTab'
 import LoginScreen from '@/components/LoginScreen'
+import ClassSelectionScreen from '@/components/ClassSelectionScreen'
 import ParticleBackground from '@/components/ParticleBackground'
+import { supabase } from '@/lib/supabase'
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [activeTab, setActiveTab] = useState<'camp' | 'arena' | 'inventory' | 'status'>('camp')
+  const [activeTab, setActiveTab] = useState<'camp' | 'arena' | 'shop' | 'inventory' | 'status'>('camp')
   const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<any>(null)
 
   const refreshProfile = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession()
+    setSession(s)
     const data = await ensureProfile()
     setProfile(data)
     setLoading(false)
@@ -73,12 +79,16 @@ export default function Dashboard() {
   }
 
   if (!profile) {
+    if (session) {
+      return <ClassSelectionScreen userId={session.user.id} onCreated={refreshProfile} />
+    }
     return <LoginScreen onLoginSuccess={refreshProfile} />
   }
 
   const tabs = [
     { id: 'camp', label: 'Acampamento', icon: '🏕️' },
     { id: 'arena', label: 'Arena', icon: '⚔️' },
+    { id: 'shop', label: 'Loja', icon: '💰' },
     { id: 'inventory', label: 'Inventário', icon: '🎒' },
     { id: 'status', label: 'Status', icon: '📊' },
   ]
@@ -147,7 +157,8 @@ export default function Dashboard() {
           >
             {activeTab === 'camp' && <CampTab profile={profile} onRefresh={refreshProfile} />}
             {activeTab === 'arena' && <ArenaTab profile={profile} />}
-            {activeTab === 'inventory' && <InventoryTab />}
+            {activeTab === 'shop' && <ShopTab profile={profile} onRefresh={refreshProfile} />}
+            {activeTab === 'inventory' && <InventoryTab profile={profile} onRefresh={refreshProfile} />}
             {activeTab === 'status' && <StatusTab profile={profile} onRefresh={refreshProfile} />}
           </div>
         </div>

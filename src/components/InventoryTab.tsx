@@ -1,11 +1,6 @@
-'use client'
-
-const ITEMS = [
-    { id: 1, name: 'Espada de Ferro', icon: '⚔️', attr: '+5 Dano', type: 'Arma', equipped: true, rarity: 'common' },
-    { id: 2, name: 'Escudo de Madeira', icon: '🛡️', attr: '+3 Defesa', type: 'Defesa', equipped: true, rarity: 'common' },
-    { id: 3, name: 'Poção de Vida', icon: '🧪', attr: '+20 HP', type: 'Consumível', equipped: false, rarity: 'uncommon' },
-    { id: 4, name: 'Capacete de Couro', icon: '🪖', attr: '+2 Resistência', type: 'Armadura', equipped: false, rarity: 'common' },
-]
+import { useState, useEffect } from 'react'
+import { Profile, getUserInventory, toggleEquip } from '@/lib/gameActions'
+import { ITEMS as CATALOG_ITEMS } from '@/lib/items'
 
 const RARITY_COLORS: Record<string, { border: string; glow: string; label: string; textColor: string }> = {
     common: { border: '#3a3a3a', glow: 'transparent', label: 'Comum', textColor: '#9ca3af' },
@@ -15,11 +10,41 @@ const RARITY_COLORS: Record<string, { border: string; glow: string; label: strin
     legendary: { border: '#f2b90d', glow: 'rgba(242,185,13,0.4)', label: 'Lendário', textColor: '#f2b90d' },
 }
 
-export default function InventoryTab() {
-    const GRID_SIZE = 20
-    const grid = Array(GRID_SIZE).fill(null).map((_, i) => ITEMS[i] || null)
+interface InventoryTabProps {
+    profile: Profile
+    onRefresh: () => void
+}
 
-    const equipped = ITEMS.filter(i => i.equipped)
+export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) {
+    const [invItems, setInvItems] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+
+    const loadInventory = async () => {
+        const items = await getUserInventory(profile.id)
+        setInvItems(items || [])
+        setLoading(false)
+    }
+
+    useEffect(() => {
+        loadInventory()
+    }, [profile.id])
+
+    const handleToggleEquip = async (inventoryId: string) => {
+        const success = await toggleEquip(profile.id, inventoryId)
+        if (success) {
+            loadInventory()
+            onRefresh()
+        }
+    }
+
+    const GRID_SIZE = 30
+    const itemsWithDetails = invItems.map(invEntry => {
+        const spec = CATALOG_ITEMS.find(it => it.id === invEntry.item_id)
+        return { ...invEntry, ...spec }
+    })
+
+    const grid = Array(GRID_SIZE).fill(null).map((_, i) => itemsWithDetails[i] || null)
+    const equipped = itemsWithDetails.filter(i => i.is_equipped)
 
     return (
         <div className="space-y-6">
@@ -28,10 +53,12 @@ export default function InventoryTab() {
             {/* Zona de Equipados */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {equipped.map(item => {
-                    const rc = RARITY_COLORS[item.rarity]
+                    const rarity = item.price > 2000 ? 'legendary' : item.price > 1000 ? 'epic' : item.price > 500 ? 'rare' : item.price > 100 ? 'uncommon' : 'common'
+                    const rc = RARITY_COLORS[rarity]
                     return (
                         <div
                             key={item.id}
+                            onClick={() => handleToggleEquip(item.id)}
                             className="medieval-border p-3 flex flex-col items-center gap-2 text-center group relative cursor-pointer transition-all hover:scale-105"
                             style={{ border: `2px solid ${rc.border}`, boxShadow: `0 0 12px ${rc.glow}` }}
                         >
@@ -39,7 +66,6 @@ export default function InventoryTab() {
                                 {item.icon}
                             </span>
                             <div className="text-[10px] font-bold text-gold leading-tight">{item.name}</div>
-                            <div className="text-[9px]" style={{ color: rc.textColor }}>{item.attr}</div>
                             <div className="text-[8px] uppercase tracking-widest text-gray-600">{item.type}</div>
 
                             {/* Tooltip */}
@@ -53,15 +79,17 @@ export default function InventoryTab() {
                                 <div className="text-[10px] font-bold text-gold mb-1">{item.name}</div>
                                 <div className="text-[9px] mb-1" style={{ color: rc.textColor }}>{rc.label}</div>
                                 <div className="h-px mb-1" style={{ background: `linear-gradient(to right, transparent, ${rc.border}, transparent)` }} />
-                                <div className="text-[9px] text-gray-400">{item.attr}</div>
-                                <div className="text-[9px] text-blue-400 mt-1 font-bold uppercase">✓ Equipado</div>
+                                <div className="text-[9px] text-gray-400 capitalize">
+                                    {Object.entries(item.stats || {}).map(([s, v]) => `${s}: +${v}`).join(', ')}
+                                </div>
+                                <div className="text-[9px] text-blue-400 mt-1 font-bold uppercase">✓ Equipado (Clique p/ Tirar)</div>
                             </div>
                         </div>
                     )
                 })}
             </div>
 
-            <div className="ornament-divider text-[10px]">Inventário ({ITEMS.length}/{GRID_SIZE} slots)</div>
+            <div className="ornament-divider text-[10px]">Inventário ({invItems.length}/{GRID_SIZE} slots)</div>
 
             {/* Grade de Inventário */}
             <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
@@ -70,6 +98,7 @@ export default function InventoryTab() {
                     return (
                         <div
                             key={i}
+                            onClick={() => item && handleToggleEquip(item.id)}
                             className={`aspect-square flex items-center justify-center text-xl group relative cursor-pointer transition-all
                 ${item ? 'hover:scale-110' : 'opacity-20'}
               `}
@@ -77,7 +106,7 @@ export default function InventoryTab() {
                                 background: item ? 'linear-gradient(135deg, #1a1a1a, #0d0d0d)' : 'rgba(0,0,0,0.3)',
                                 border: item ? `1px solid ${rc.border}` : '1px dashed #2a2a2a',
                                 borderRadius: '3px',
-                                boxShadow: item?.equipped ? `0 0 8px ${rc.glow}` : undefined,
+                                boxShadow: item?.is_equipped ? `0 0 8px ${rc.glow}` : undefined,
                             }}
                         >
                             {item ? (
@@ -94,12 +123,15 @@ export default function InventoryTab() {
                                         }}
                                     >
                                         <div className="text-[9px] font-bold text-gold">{item.name}</div>
-                                        <div className="text-[8px] mt-0.5" style={{ color: rc.textColor }}>{item.attr}</div>
-                                        {item.equipped && <div className="text-[8px] text-blue-400 font-bold mt-0.5">EQUIPADO</div>}
+                                        <div className="text-[8px] mt-0.5 text-gray-400">
+                                            {Object.entries(item.stats || {}).map(([s, v]) => `${s}: +${v}`).join(', ')}
+                                        </div>
+                                        {item.is_equipped && <div className="text-[8px] text-blue-400 font-bold mt-0.5 uppercase">Equipado</div>}
+                                        {!item.is_equipped && <div className="text-[8px] text-gold font-bold mt-0.5 uppercase">Clique p/ Equipar</div>}
                                     </div>
                                 </>
                             ) : (
-                                <span className="text-[8px] text-gray-700 font-mono">{i + 1}</span>
+                                <span className="text-[8px] text-gray-700 font-mono">{i + i}</span>
                             )}
                         </div>
                     )

@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Profile, Enemy, getEnemies } from '@/lib/gameActions'
+import { Profile, Enemy, getEnemies, getUserInventory } from '@/lib/gameActions'
 import { simulateCombat, Fighter, NarrativeTurn } from '@/combat'
+import { ITEMS as CATALOG_ITEMS } from '@/lib/items'
 import CharacterPortrait from './CharacterPortrait'
 import StatBar from './StatBar'
 
@@ -59,15 +60,33 @@ export default function ArenaTab({ profile }: { profile: Profile }) {
         setPlayerHp(profile.hp_current)
         setEnemyHp(selectedEnemy.hp_max)
 
+        // Buscar itens equipados
+        const inventory = await getUserInventory(profile.id)
+        const equippedItems = inventory.filter((inv: any) => inv.is_equipped).map((inv: any) => {
+            const spec = CATALOG_ITEMS.find(it => it.id === inv.item_id)
+            return spec
+        }).filter(Boolean)
+
+        // Calcular modificadores
+        const bonuses = { strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 }
+        let weaponName = 'as mãos nulas'
+
+        equippedItems.forEach((item: any) => {
+            if (item.type === 'weapon') weaponName = item.name
+            Object.entries(item.stats || {}).forEach(([stat, val]) => {
+                if (stat in bonuses) (bonuses as any)[stat] += (val as number)
+            })
+        })
+
         const playerFighter: Fighter = {
             name: profile.username,
             hp: profile.hp_current,
-            strength: profile.strength,
-            defense: profile.defense,
-            agility: profile.agility,
-            accuracy: profile.accuracy,
+            strength: profile.strength + bonuses.strength,
+            defense: profile.defense + bonuses.defense,
+            agility: profile.agility + bonuses.agility,
+            accuracy: profile.accuracy + bonuses.accuracy,
             stamina: 100,
-            weaponName: 'espada recurvada' // placeholder for future weapon system
+            weaponName
         }
 
         const enemyFighter: Fighter = {
