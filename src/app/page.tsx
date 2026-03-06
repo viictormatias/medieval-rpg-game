@@ -79,7 +79,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Escuta mudanças de auth para limpar o hash da URL (access_token)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session && typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search)
       }
@@ -149,17 +149,25 @@ export default function Dashboard() {
   // ===== TELA DE LOADING SIMPLIFICADA =====
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gold font-serif pb-20">
-        <div className="relative mb-10 group">
-          <div className="w-20 h-20 border-2 border-gold/20 border-t-gold rounded-full animate-spin"></div>
-          <img
-            src="/logo.png"
-            alt="Loading"
-            className="absolute inset-0 m-auto w-10 h-auto opacity-80 animate-pulse"
-          />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gold font-serif pb-20 relative overflow-hidden">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 scale-105"
+          style={{ backgroundImage: 'url("/images/loading2.jpeg")', filter: 'grayscale(0.3) brightness(0.5)' }}
+        />
+        <div className="absolute inset-0 z-1 pointer-events-none" style={{ background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.9) 100%)' }} />
+        
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="relative mb-8 md:mb-10 group">
+            <div className="w-16 h-16 md:w-20 md:h-20 border-2 border-gold/20 border-t-gold rounded-full animate-spin"></div>
+            <img
+              src="/logo.png"
+              alt="Loading"
+              className="absolute inset-0 m-auto w-8 md:w-10 h-auto opacity-80 animate-pulse"
+            />
+          </div>
+          <h1 className="text-xs md:text-sm tracking-[0.6em] animate-pulse uppercase font-black text-gold">Fronteira Oeste</h1>
+          <p className="text-[9px] md:text-[10px] mt-2 md:mt-3 text-[#d9c5b2]/60 uppercase tracking-widest italic font-bold">Sincronizando dados vitais...</p>
         </div>
-        <h1 className="text-sm tracking-[0.6em] animate-pulse uppercase font-black text-gold/80">Fronteira Oeste</h1>
-        <p className="text-[10px] mt-2 text-gray-600 uppercase tracking-widest italic">Sincronizando dados vitais...</p>
       </div>
     )
   }
