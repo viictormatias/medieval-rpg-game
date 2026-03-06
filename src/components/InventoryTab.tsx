@@ -79,7 +79,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const itemsWithDetails = invItems.map(invEntry => {
         const spec = CATALOG_ITEMS.find(it => it.id === invEntry.item_id)
         if (!spec) return null
-        return { ...spec, ...invEntry, catalogId: spec.id }
+        return { ...spec, quantity: invEntry.quantity || 1, is_equipped: invEntry.is_equipped, inventory_id: invEntry.id }
     }).filter(Boolean) as any[]
 
     const equippedItems = itemsWithDetails.filter(i => i.is_equipped)
@@ -100,7 +100,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         e.preventDefault()
         const inventoryId = e.dataTransfer.getData('inventoryId')
         if (!inventoryId) return
-        const itemToEquip = itemsWithDetails.find(i => i.id === inventoryId)
+        const itemToEquip = itemsWithDetails.find(i => i.inventory_id === inventoryId)
         if (!itemToEquip || itemToEquip.type !== slotType) return
         const req = checkItemRequirements(profile, itemToEquip)
         if (!req.meets) return
@@ -112,7 +112,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         e.preventDefault()
         const inventoryId = e.dataTransfer.getData('inventoryId')
         if (!inventoryId) return
-        const itemToUnequip = itemsWithDetails.find(i => i.id === inventoryId)
+        const itemToUnequip = itemsWithDetails.find(i => i.inventory_id === inventoryId)
         if (!itemToUnequip) return
         if (itemToUnequip.is_equipped) await handleToggleEquip(inventoryId)
         setDraggedItemId(null)
@@ -121,7 +121,8 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const handleItemClick = async (item: any, req: any) => {
         if (!item) return
         if (item.type === 'consumable') {
-            const res = await consumeItem(profile.id, item.id, item)
+            // item.inventory_id is now safely the database UUID
+            const res = await consumeItem(profile.id, item.inventory_id, item)
             alert(res.message)
             if (res.success) {
                 loadInventory()
@@ -135,7 +136,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                 setLightboxStats(item.stats)
             } else if (req?.meets) {
                 // Only auto-equip if requirements are met and there's no image to show
-                handleToggleEquip(item.id)
+                handleToggleEquip(item.inventory_id)
             } else if (!req?.meets) {
                 alert(`Você não tem os requisitos necessários para este item: ${req?.reason || ''}`)
             }
@@ -163,7 +164,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                             setLightboxAlt(item.name)
                             setLightboxStats(item.stats)
                         } else {
-                            handleToggleEquip(item.id)
+                            handleToggleEquip(item.inventory_id)
                         }
                     }
                 }}
@@ -241,9 +242,9 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
 
                         return (
                             <div
-                                key={item ? item.id : `empty-${i}`}
+                                key={item ? item.inventory_id : `empty-${i}`}
                                 draggable={!!item}
-                                onDragStart={(e) => item && handleDragStart(e, item.id)}
+                                onDragStart={(e) => item && handleDragStart(e, item.inventory_id)}
                                 onClick={() => item && handleItemClick(item, req)}
                                 className="aspect-square bg-black/60 border border-white/5 relative group transition-all hover:border-gold/30 hover:bg-white/5 flex items-center justify-center cursor-pointer"
                                 style={{
