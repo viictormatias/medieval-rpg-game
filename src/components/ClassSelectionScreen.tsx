@@ -35,7 +35,7 @@ const CLASSES = [
         imageSrc: '/images/xerife.jpeg',
         description: 'Linha de frente resistente. Segura o duelo sob pressao.',
         flavor: 'A estrela no peito pesa tanto quanto o ferro no coldre. A lei é a única coisa que separa este mundo do abismo.',
-        base: { hp: 100, strength: 10, defense: 10, agility: 6, accuracy: 8, vigor: 12 },
+        base: { hp: 100, strength: 10, defense: 10, agility: 6, accuracy: 7, vigor: 12 },
         color: '#3b82f6'
     },
     {
@@ -47,7 +47,7 @@ const CLASSES = [
         imageSrc: '/images/pistoleiro.jpeg',
         description: 'Especialista em agilidade e precisao no saque.',
         flavor: 'Rapidez não é escolha, é sobrevivência. Antes que a poeira baixe, o Kid já terá guardado a arma.',
-        base: { hp: 100, strength: 7, defense: 6, agility: 12, accuracy: 12, vigor: 5 },
+        base: { hp: 100, strength: 7, defense: 7, agility: 13, accuracy: 13, vigor: 5 },
         color: '#f2b90d'
     },
     {
@@ -59,7 +59,7 @@ const CLASSES = [
         imageSrc: '/images/forasteiro.jpeg',
         description: 'Versatil e perigoso, pronto para qualquer contrato.',
         flavor: 'Ninguém sabe de onde veio, e ninguém viverá para saber para onde vai. Ele é o rastro que o vento apaga.',
-        base: { hp: 100, strength: 8, defense: 8, agility: 9, accuracy: 9, vigor: 8 },
+        base: { hp: 100, strength: 9, defense: 9, agility: 9, accuracy: 10, vigor: 8 },
         color: '#ef4444'
     },
     {
@@ -95,7 +95,7 @@ const CLASSES = [
         imageSrc: '/images/mercador.jpeg',
         description: 'Negociante astuto com recursos extras.',
         flavor: 'O ouro brilha mais que a honra. Se ele não puder te vencer no saque, ele te vencerá no contrato.',
-        base: { hp: 100, strength: 5, defense: 5, agility: 10, accuracy: 10, vigor: 5 },
+        base: { hp: 100, strength: 7, defense: 7, agility: 11, accuracy: 12, vigor: 8 },
         color: '#eab308'
     },
     {
