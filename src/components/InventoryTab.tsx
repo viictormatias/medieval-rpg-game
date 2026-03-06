@@ -123,14 +123,16 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                 onRefresh()
             }
         } else {
-            if (req?.meets) {
-                if (item.image_url) {
-                    setLightboxSrc(item.image_url)
-                    setLightboxAlt(item.name)
-                    setLightboxStats(item.stats)
-                } else {
-                    handleToggleEquip(item.id)
-                }
+            // Always allow opening Lightbox if there is an image
+            if (item.image_url) {
+                setLightboxSrc(item.image_url)
+                setLightboxAlt(item.name)
+                setLightboxStats(item.stats)
+            } else if (req?.meets) {
+                // Only auto-equip if requirements are met and there's no image to show
+                handleToggleEquip(item.id)
+            } else if (!req?.meets) {
+                alert(`Você não tem os requisitos necessários para este item: ${req?.reason || ''}`)
             }
         }
     }

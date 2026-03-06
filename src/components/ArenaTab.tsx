@@ -58,6 +58,12 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         enemy: Enemy;
     } | null>(null);
 
+    useEffect(() => {
+        if (logEndRef.current) {
+            logEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [combatLog])
+
     const loadSoulsSnapshot = async () => {
         const inventory = await getUserInventory(profile.id)
         const equippedItems = (inventory || [])
@@ -218,23 +224,43 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         const attackerName = log.attacker.toLowerCase()
         const isPlayer = attackerName === playerName
 
-        if (log.isMiss) return { color: '#6b7280', fontWeight: 'normal' }
+        // Base theme colors
+        const playerColor = '#60a5fa' // Bright Blue
+        const enemyColor = '#ef4444'  // Bright Red
+        const turnColor = isPlayer ? playerColor : enemyColor
+
+        if (log.isMiss) return {
+            color: '#6b7280',
+            fontWeight: 'normal',
+            borderLeft: '4px solid transparent',
+            opacity: 0.6
+        }
+
+        const baseStyle: React.CSSProperties = {
+            color: turnColor,
+            fontWeight: '900',
+            borderLeft: `4px solid ${turnColor}`,
+            paddingLeft: '12px',
+            background: isPlayer ? 'rgba(96, 165, 250, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+            marginBottom: '4px',
+            borderRadius: '0 4px 4px 0',
+            transition: 'all 0.3s ease'
+        }
+
         if (log.isCritical) {
             return {
-                color: '#ff0000',
-                fontWeight: '900',
-                background: 'rgba(255,0,0,0.2)',
-                textShadow: '0 0 15px rgba(255, 0, 0, 0.9)',
-                borderLeft: '6px solid #ff0000',
-                fontSize: '18px',
-                letterSpacing: '0.05em'
+                ...baseStyle,
+                color: '#ffffff', // White text for criticals to pop
+                background: isPlayer ? 'rgba(96, 165, 250, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                textShadow: `0 0 12px ${turnColor}`,
+                fontSize: '16px',
+                borderLeft: `6px solid ${turnColor}`,
+                letterSpacing: '0.05em',
+                animation: 'pulse 0.5s infinite alternate'
             }
         }
 
-        // Player: Bright Blue (matches HP bar)
-        if (isPlayer) return { color: '#60a5fa', fontWeight: 'bold' }
-        // Enemy: Vibrant Red (matches HP bar)
-        return { color: '#ef4444', fontWeight: 'bold' }
+        return baseStyle
     }
 
     const enemyHpMax = selectedEnemy?.hp_max || 1

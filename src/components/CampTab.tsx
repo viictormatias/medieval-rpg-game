@@ -47,15 +47,25 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
 
     useEffect(() => {
         if (profile.job_finish_at) {
-            const interval = setInterval(() => {
-                const remaining = Math.max(
+            const calculateRemaining = () => {
+                return Math.max(
                     0,
                     Math.floor((new Date(profile.job_finish_at!).getTime() - Date.now()) / 1000)
                 )
+            }
+
+            // Inicializa imediatamente para evitar flicker de 1s
+            const initialRemaining = calculateRemaining()
+            setTimeLeft(initialRemaining)
+
+            const interval = setInterval(() => {
+                const remaining = calculateRemaining()
                 setTimeLeft(remaining)
                 if (remaining === 0) clearInterval(interval)
             }, 1000)
             return () => clearInterval(interval)
+        } else {
+            setTimeLeft(0)
         }
     }, [profile.job_finish_at])
 
