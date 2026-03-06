@@ -152,12 +152,18 @@ export async function ensureProfile(): Promise<Profile | null> {
         return null // Precisamos de seleção de classe
     }
 
-    if (!profile.class) {
-        console.log('[DEBUG-PROFILE] Profile exists but no class selected:', profile.id);
-        return null // Perfil existe mas sem classe selecionada
+    // Um perfil só é considerado "completo" se tiver uma classe E um username selecionados
+    if (!profile.class || !profile.username) {
+        console.log('[DEBUG-PROFILE] Perfil INCOMPLETO ou SKELETON detectado (id:', profile.id, ') - Forçando criação.');
+        return null 
     }
 
-    console.log('[DEBUG-PROFILE] Profile loaded successfully:', profile.username, 'Class:', profile.class);
+    console.log('[DEBUG-PROFILE] Perfil carregado com sucesso:', {
+        username: profile.username,
+        class: profile.class,
+        level: profile.level,
+        id: profile.id
+    });
     return await syncVitals(profile)
 }
 
@@ -212,7 +218,7 @@ export async function createCharacter(
 
     const { data: profile, error } = await supabase
         .from('profiles')
-        .insert([{
+        .upsert([{
             id: userId,
             username,
             class: classType,

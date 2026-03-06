@@ -47,9 +47,10 @@ export default function Dashboard() {
           if (authErr) throw authErr;
 
           setSession(s)
+          console.log('[DEBUG-AUTH] Session present?', !!s, s?.user?.email);
           if (s) {
             const data = await ensureProfile()
-            console.log('[DEBUG-RELOAD] Data from ensureProfile:', data);
+            console.log('[DEBUG-RELOAD] Data from ensureProfile:', data ? `Found (${data.username})` : 'Not found (null)');
             setProfile(data)
           } else {
             setProfile(null)
@@ -93,6 +94,19 @@ export default function Dashboard() {
     const interval = setInterval(() => refreshProfile(), 60_000)
     return () => clearInterval(interval)
   }, [])
+
+  // Limpa o access_token da URL após o Supabase processar
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      if (window.location.hash.includes('access_token=')) {
+        // Pequeno delay para garantir que o listener de auth rodou
+        setTimeout(() => {
+          window.history.replaceState(null, '', window.location.pathname);
+          console.log('[DEBUG-AUTH] URL limpa para segurança.');
+        }, 500);
+      }
+    }
+  }, [session]);
 
   // Garante que a tela suba ao trocar de abas
   useEffect(() => {
