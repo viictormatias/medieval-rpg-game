@@ -19,10 +19,10 @@ interface ClassSelectionScreenProps {
 const STAT_KEYS: InitialStatKey[] = ['strength', 'defense', 'agility', 'accuracy', 'vigor']
 
 const PRESETS: Array<{ id: string; label: string; points: InitialStatAllocation }> = [
-    { id: 'balanced', label: 'Balanceada', points: { strength: 2, defense: 2, agility: 1, accuracy: 1, vigor: 2 } },
-    { id: 'gatilho', label: 'Gatilho Rapido', points: { strength: 1, defense: 1, agility: 2, accuracy: 3, vigor: 1 } },
-    { id: 'bruto', label: 'Brutamontes', points: { strength: 4, defense: 2, agility: 0, accuracy: 0, vigor: 2 } },
-    { id: 'duravel', label: 'Durável', points: { strength: 1, defense: 3, agility: 1, accuracy: 0, vigor: 3 } },
+    { id: 'balanced', label: 'Balanceada', points: { strength: 1, defense: 1, agility: 1, accuracy: 1, vigor: 1 } },
+    { id: 'gatilho', label: 'Gatilho Rapido', points: { strength: 0, defense: 0, agility: 2, accuracy: 3, vigor: 0 } },
+    { id: 'bruto', label: 'Bruto', points: { strength: 3, defense: 1, agility: 0, accuracy: 0, vigor: 1 } },
+    { id: 'duravel', label: 'Durável', points: { strength: 0, defense: 2, agility: 0, accuracy: 0, vigor: 3 } },
 ]
 
 const CLASSES = [
@@ -35,7 +35,7 @@ const CLASSES = [
         imageSrc: '/images/xerife.jpeg',
         description: 'Linha de frente resistente. Segura o duelo sob pressao.',
         flavor: 'A estrela no peito pesa tanto quanto o ferro no coldre. A lei é a única coisa que separa este mundo do abismo.',
-        base: { hp: 100, strength: 10, defense: 10, agility: 6, accuracy: 7, vigor: 12 },
+        base: { hp: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3 },
         color: '#3b82f6'
     },
     {
@@ -47,7 +47,7 @@ const CLASSES = [
         imageSrc: '/images/pistoleiro.jpeg',
         description: 'Especialista em agilidade e precisao no saque.',
         flavor: 'Rapidez não é escolha, é sobrevivência. Antes que a poeira baixe, o Kid já terá guardado a arma.',
-        base: { hp: 100, strength: 7, defense: 7, agility: 13, accuracy: 13, vigor: 5 },
+        base: { hp: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1 },
         color: '#f2b90d'
     },
     {
@@ -59,7 +59,7 @@ const CLASSES = [
         imageSrc: '/images/forasteiro.jpeg',
         description: 'Versatil e perigoso, pronto para qualquer contrato.',
         flavor: 'Ninguém sabe de onde veio, e ninguém viverá para saber para onde vai. Ele é o rastro que o vento apaga.',
-        base: { hp: 100, strength: 9, defense: 9, agility: 9, accuracy: 10, vigor: 8 },
+        base: { hp: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2 },
         color: '#ef4444'
     },
     {
@@ -71,7 +71,7 @@ const CLASSES = [
         imageSrc: '/images/pregador.jpeg',
         description: 'Sancao divina e resistencia espiritual.',
         flavor: 'Em uma mão a Bíblia, na outra o julgamento. Ele busca salvar almas, mas não se importa em enterrar corpos.',
-        base: { hp: 100, strength: 6, defense: 12, agility: 5, accuracy: 10, vigor: 12 },
+        base: { hp: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3 },
         color: '#a855f7'
     },
     {
@@ -83,7 +83,7 @@ const CLASSES = [
         imageSrc: '/images/nativo.jpeg',
         description: 'Guerreiro das sombras, mestre em emboscadas.',
         flavor: 'As montanhas lembram de quem era esta terra. Ele não luta por glória, luta para que o passado não seja esquecido.',
-        base: { hp: 100, strength: 11, defense: 7, agility: 12, accuracy: 8, vigor: 7 },
+        base: { hp: 100, strength: 3, defense: 1, agility: 3, accuracy: 2, vigor: 1 },
         color: '#22c55e'
     },
     {
@@ -95,7 +95,7 @@ const CLASSES = [
         imageSrc: '/images/mercador.jpeg',
         description: 'Negociante astuto com recursos extras.',
         flavor: 'O ouro brilha mais que a honra. Se ele não puder te vencer no saque, ele te vencerá no contrato.',
-        base: { hp: 100, strength: 7, defense: 7, agility: 11, accuracy: 12, vigor: 8 },
+        base: { hp: 100, strength: 1, defense: 1, agility: 3, accuracy: 3, vigor: 2 },
         color: '#eab308'
     },
     {
@@ -107,7 +107,7 @@ const CLASSES = [
         imageSrc: '/images/cacador-de-recompensas.jpeg',
         description: 'Rastreador implacavel e precision fatal.',
         flavor: 'Para ele, homens são apenas números em um papel de \'Procurado\'. Ele nunca erra o rastro, e nunca volta de mãos vazias.',
-        base: { hp: 100, strength: 12, defense: 8, agility: 8, accuracy: 12, vigor: 5 },
+        base: { hp: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1 },
         color: '#f97316'
     }
 ]

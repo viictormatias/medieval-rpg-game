@@ -63,7 +63,7 @@ export interface CombatResolution {
 
 export type InitialStatKey = 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor'
 export type InitialStatAllocation = Partial<Record<InitialStatKey, number>>
-export const ONBOARDING_STAT_POINTS = 8
+export const ONBOARDING_STAT_POINTS = 5
 export const ONBOARDING_MAX_PER_STAT = 8
 export const COMBAT_ENERGY_COST = 12
 
@@ -164,13 +164,13 @@ export async function createCharacter(
     allocation: InitialStatAllocation = {}
 ): Promise<Profile | null> {
     const classStats = {
-        Pistoleiro: { hp_max: 100, strength: 7, defense: 7, agility: 13, accuracy: 13, vigor: 5, gold: 100 },
-        Xerife: { hp_max: 100, strength: 10, defense: 10, agility: 6, accuracy: 7, vigor: 12, gold: 100 },
-        Forasteiro: { hp_max: 100, strength: 9, defense: 9, agility: 9, accuracy: 10, vigor: 8, gold: 100 },
-        Pregador: { hp_max: 100, strength: 6, defense: 12, agility: 5, accuracy: 10, vigor: 12, gold: 100 },
-        Nativo: { hp_max: 100, strength: 11, defense: 7, agility: 12, accuracy: 8, vigor: 7, gold: 100 },
-        Vendedor: { hp_max: 100, strength: 7, defense: 7, agility: 11, accuracy: 12, vigor: 8, gold: 100 },
-        CacadorDeRecompensas: { hp_max: 100, strength: 12, defense: 8, agility: 8, accuracy: 12, vigor: 5, gold: 100 }
+        Pistoleiro: { hp_max: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1, gold: 100 },
+        Xerife: { hp_max: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3, gold: 100 },
+        Forasteiro: { hp_max: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2, gold: 100 },
+        Pregador: { hp_max: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3, gold: 100 },
+        Nativo: { hp_max: 100, strength: 3, defense: 1, agility: 3, accuracy: 2, vigor: 1, gold: 100 },
+        Vendedor: { hp_max: 100, strength: 1, defense: 1, agility: 3, accuracy: 3, vigor: 2, gold: 100 },
+        CacadorDeRecompensas: { hp_max: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1, gold: 100 }
     }[classType]
 
     const keys: InitialStatKey[] = ['strength', 'defense', 'agility', 'accuracy', 'vigor']
