@@ -107,6 +107,7 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                             className={`western-border p-4 md:p-5 flex flex-col gap-3 md:gap-4 fade-in-up transition-all duration-300 relative
                 ${isActive ? 'border-gold' : ''}
                 ${isOtherBusy ? 'opacity-40 grayscale pointer-events-none' : ''}
+                ${profile.level < job.min_level ? 'opacity-60 grayscale' : ''}
               `}
                             style={{
                                 animationDelay: `${idx * 60}ms`,
@@ -197,7 +198,7 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                                     {isOtherBusy
                                         ? '🔒 OCUPADO'
                                         : profile.level < job.min_level
-                                            ? `⭐ LVL ${job.min_level}`
+                                            ? `🔒 LVL ${job.min_level}`
                                             : !canStart
                                                 ? '⚡ SEM ENERGIA'
                                                 : '▶ INICIAR MISSÃO'}
