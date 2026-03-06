@@ -43,11 +43,10 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: () => 
                     border: '1px solid rgba(242,185,13,0.2)',
                 }}
             >
-                <div className="relative mb-4 w-full flex justify-center">
-                    <img src="/images/logo-grande.jpeg" alt="Far West Logo" className="w-48 h-auto drop-shadow-[0_0_15px_rgba(242,185,13,0.3)] animate-fade-in rounded-sm" />
+                <div className="relative mb-6 w-full flex justify-center">
+                    <img src="/images/logo-grande.jpeg" alt="Far West Logo" className="w-72 h-auto drop-shadow-[0_0_20px_rgba(242,185,13,0.4)] animate-fade-in rounded-sm" />
                 </div>
-                <p className="text-base text-gray-500 italic mb-1 uppercase tracking-[0.2em] font-black">Viva rápido, mire melhor</p>
-                <div className="w-full ornament-divider text-xs my-6 tracking-[0.4em]">⚔️ ⚔️ ⚔️</div>
+                <p className="text-base text-gray-400 italic mb-8 uppercase tracking-[0.2em] font-black">Viva rápido, mire melhor</p>
 
                 {errorMsg && (
                     <div className="w-full p-3 mb-4 rounded-sm text-xs font-bold uppercase tracking-wider"
