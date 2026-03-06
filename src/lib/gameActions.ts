@@ -164,13 +164,13 @@ export async function createCharacter(
     allocation: InitialStatAllocation = {}
 ): Promise<Profile | null> {
     const classStats = {
-        Pistoleiro: { hp_max: 100, strength: 7, defense: 7, agility: 13, accuracy: 13, vigor: 5, gold: 140 },
-        Xerife: { hp_max: 100, strength: 10, defense: 10, agility: 6, accuracy: 7, vigor: 12, gold: 90 },
-        Forasteiro: { hp_max: 100, strength: 9, defense: 9, agility: 9, accuracy: 10, vigor: 8, gold: 110 },
-        Pregador: { hp_max: 100, strength: 6, defense: 12, agility: 5, accuracy: 10, vigor: 12, gold: 120 },
-        Nativo: { hp_max: 100, strength: 11, defense: 7, agility: 12, accuracy: 8, vigor: 7, gold: 60 },
-        Vendedor: { hp_max: 100, strength: 7, defense: 7, agility: 11, accuracy: 12, vigor: 8, gold: 250 },
-        CacadorDeRecompensas: { hp_max: 100, strength: 12, defense: 8, agility: 8, accuracy: 12, vigor: 5, gold: 150 }
+        Pistoleiro: { hp_max: 100, strength: 7, defense: 7, agility: 13, accuracy: 13, vigor: 5, gold: 100 },
+        Xerife: { hp_max: 100, strength: 10, defense: 10, agility: 6, accuracy: 7, vigor: 12, gold: 100 },
+        Forasteiro: { hp_max: 100, strength: 9, defense: 9, agility: 9, accuracy: 10, vigor: 8, gold: 100 },
+        Pregador: { hp_max: 100, strength: 6, defense: 12, agility: 5, accuracy: 10, vigor: 12, gold: 100 },
+        Nativo: { hp_max: 100, strength: 11, defense: 7, agility: 12, accuracy: 8, vigor: 7, gold: 100 },
+        Vendedor: { hp_max: 100, strength: 7, defense: 7, agility: 11, accuracy: 12, vigor: 8, gold: 100 },
+        CacadorDeRecompensas: { hp_max: 100, strength: 12, defense: 8, agility: 8, accuracy: 12, vigor: 5, gold: 100 }
     }[classType]
 
     const keys: InitialStatKey[] = ['strength', 'defense', 'agility', 'accuracy', 'vigor']
