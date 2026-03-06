@@ -140,11 +140,7 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                     </div>
 
                     <div className="flex items-center gap-3 md:gap-4">
-                        <button
-                            onClick={() => supabase.auth.signOut()}
-                            className="group relative focus:outline-none"
-                            title="Deslogar"
-                        >
+                        <div className="relative group">
                             <CharacterPortrait
                                 src={CLASS_PORTRAITS[profile.class] || null}
                                 fallbackEmoji="🤠"
@@ -153,10 +149,14 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                                 name={profile.username}
                                 className="md:w-12 md:h-12"
                             />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
-                                <span className="text-[8px] text-white font-bold uppercase tracking-widest">Sair</span>
-                            </div>
-                        </button>
+                            <button
+                                onClick={() => supabase.auth.signOut()}
+                                className="absolute -top-1 -right-1 bg-black/80 border border-white/20 text-white/40 hover:text-white hover:border-red-500/50 w-5 h-5 flex items-center justify-center rounded-sm transition-all z-20 group-hover:opacity-100 opacity-0"
+                                title="Deslogar"
+                            >
+                                <span className="text-[10px]">✕</span>
+                            </button>
+                        </div>
 
                         <div className="min-w-0">
                             <h1 className="text-sm md:text-base font-bold text-[#d9c5b2] leading-tight tracking-wide font-serif truncate">

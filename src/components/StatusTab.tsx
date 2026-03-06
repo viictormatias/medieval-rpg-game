@@ -78,8 +78,15 @@ function StatRow({ label, value, positive }: { label: string; value: string | nu
 }
 
 export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
-    const [spending, setSpending] = useState(false)
+    const [saving, setSaving] = useState(false)
     const [souls, setSouls] = useState<ReturnType<typeof deriveSoulsStats> | null>(null)
+    const [pending, setPending] = useState<Record<string, number>>({
+        strength: 0,
+        defense: 0,
+        agility: 0,
+        accuracy: 0,
+        vigor: 0
+    })
 
     const loadSouls = async () => {
         const inventory = await getUserInventory(profile.id)
@@ -87,34 +94,57 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
             .filter((inv: any) => inv.is_equipped)
             .map((inv: any) => ITEMS.find(it => it.id === inv.item_id))
             .filter(Boolean)
-        setSouls(deriveSoulsStats(profile, equipped as any))
+
+        // Preview with pending stats
+        const previewProfile = {
+            ...profile,
+            strength: profile.strength + (pending.strength || 0),
+            defense: profile.defense + (pending.defense || 0),
+            agility: profile.agility + (pending.agility || 0),
+            accuracy: profile.accuracy + (pending.accuracy || 0),
+            vigor: profile.vigor + (pending.vigor || 0)
+        }
+        setSouls(deriveSoulsStats(previewProfile, equipped as any))
     }
 
     useEffect(() => { loadSouls() }, [
-        profile.id, profile.vigor, profile.strength, profile.agility, profile.accuracy, profile.defense
+        profile.id, profile.vigor, profile.strength, profile.agility, profile.accuracy, profile.defense,
+        pending
     ])
 
-    const spendPoint = async (attr: 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor') => {
-        if (profile.stat_points_available <= 0 || spending) return
-        setSpending(true)
-        const updates: any = {
-            [attr]: (profile[attr] ?? 5) + 1,
-            stat_points_available: profile.stat_points_available - 1
+    const totalPending = Object.values(pending).reduce((a, b) => a + b, 0)
+    const hasPending = totalPending > 0
+
+    const adjustPending = (attr: string, delta: number) => {
+        if (delta > 0 && totalPending >= profile.stat_points_available) return
+        if (delta < 0 && (pending[attr] || 0) <= 0) return
+
+        setPending(prev => ({
+            ...prev,
+            [attr]: (prev[attr] || 0) + delta
+        }))
+    }
+
+    const handleConfirm = async () => {
+        const { distributeStatsBatch } = await import('@/lib/gameActions')
+        setSaving(true)
+        const success = await distributeStatsBatch(profile.id, pending as any)
+        if (success) {
+            setPending({ strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 })
+            await onRefresh()
         }
-        if (attr === 'vigor') {
-            updates.hp_max = profile.hp_max + 10
-            updates.hp_current = profile.hp_current + 10
-        }
-        await supabase.from('profiles').update(updates).eq('id', profile.id)
-        await onRefresh()
-        setSpending(false)
+        setSaving(false)
+    }
+
+    const handleCancel = () => {
+        setPending({ strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 })
     }
 
     const xpToNext = profile.level * 100
     const trend = buildTrend(profile)
 
     return (
-        <div className="flex flex-col gap-5 md:gap-6 max-w-[820px] mx-auto">
+        <div className="flex flex-col gap-5 md:gap-6 max-w-[820px] mx-auto pb-24">
 
             {/* ─── CABEÇALHO DO PERSONAGEM ─── */}
             <div className="western-border p-4 md:p-5 flex items-center gap-4 md:gap-5 bg-gradient-to-br from-[#1f140c] to-[#140d07]">
@@ -131,9 +161,11 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] md:text-sm text-[#9ca3af] uppercase tracking-[0.2em] font-black">
                             <span>Vida</span>
-                            <span className="text-[#f87171] font-mono font-bold">{profile.hp_current} / {profile.hp_max}</span>
+                            <span className="text-[#f87171] font-mono font-bold">
+                                {profile.hp_current + (pending.vigor * 10)} / {profile.hp_max + (pending.vigor * 10)}
+                            </span>
                         </div>
-                        <Bar value={profile.hp_current} max={profile.hp_max} color="#ef4444" height={8} />
+                        <Bar value={profile.hp_current + (pending.vigor * 10)} max={profile.hp_max + (pending.vigor * 10)} color="#ef4444" height={8} />
                     </div>
 
                     <div className="space-y-1">
@@ -146,17 +178,26 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                 </div>
             </div>
 
-            {profile.stat_points_available > 0 && (
+            {hasPending ? (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-xl western-border bg-black/90 backdrop-blur-md border-gold p-4 flex items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.9)] animate-in slide-in-from-bottom duration-500 rounded-sm">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-gold uppercase font-black tracking-[0.2em]">Confirmar Atributos?</span>
+                        <span className="text-white font-bold text-sm">{totalPending} ponto(s) aplicados</span>
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={handleCancel} disabled={saving} className="px-4 py-2 border border-red-900/50 text-red-500 text-[10px] font-black uppercase hover:bg-red-950/30 transition-colors">Descartar</button>
+                        <button onClick={handleConfirm} disabled={saving} className="px-6 py-2 bg-gold text-black text-[11px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-lg">{saving ? 'Salvando...' : 'Confirmar'}</button>
+                    </div>
+                </div>
+            ) : profile.stat_points_available > 0 && (
                 <div className="p-3 md:p-4 text-center rounded-sm border-2 border-dashed border-gold/40 bg-gold/5 text-[10px] md:text-xs font-bold text-gold uppercase tracking-[0.15em] shadow-lg animate-pulse">
                     ✨ {profile.stat_points_available} ponto(s) de atributo disponível(is)
                 </div>
             )}
 
             <div className="flex flex-col lg:grid lg:grid-cols-[1fr_260px] gap-5 items-start">
-                {/* Painel Lateral de Stats - Versão "Wanted Card" (MOVED UP FOR MOBILE) */}
                 <div className="w-full lg:w-auto order-first lg:order-last">
                     <div className="western-border p-4 bg-gradient-to-b from-[#1a120c] to-[#0d0906] border-gold shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-                        {/* Portrait Container */}
                         <div className="w-full aspect-square mb-6 relative border-2 border-gold-dark p-1 bg-black">
                             <CharacterPortrait
                                 src={profile.image_url || CLASS_PORTRAITS[profile.class] || null}
@@ -165,7 +206,6 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                                 borderColor="transparent"
                                 name={profile.username}
                             />
-                            {/* Decorative banner */}
                             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gold text-black px-4 md:px-6 py-1.5 md:py-2 text-sm md:text-base font-black uppercase whitespace-nowrap tracking-[0.15em] rounded-sm shadow-xl border-2 border-black">
                                 {profile.username}
                             </div>
@@ -175,51 +215,68 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                             Dados de Duelo
                         </div>
                         <div className="flex flex-col gap-0.5">
-                            <StatRow label="HP Máximo" value={profile.hp_max} />
+                            <StatRow label="HP Máximo" value={profile.hp_max + (pending.vigor * 10)} positive={pending.vigor > 0} />
                             <StatRow label="Energia" value={`${profile.energy} / 100`} />
-                            <StatRow label="Pontaria" value={profile.accuracy + (souls?.bonuses.accuracy || 0)} />
-                            <StatRow label="Defesa" value={profile.defense + (souls?.bonuses.defense || 0)} />
+                            <StatRow label="Pontaria" value={(profile.accuracy + (souls?.bonuses.accuracy || 0))} positive={pending.accuracy > 0} />
+                            <StatRow label="Defesa" value={(profile.defense + (souls?.bonuses.defense || 0))} positive={pending.defense > 0} />
                         </div>
 
-                        {/* Summary of combat stats */}
                         <div className="mt-3 pt-3 border-top border-[#c9a84c33]">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="text-[9px] text-[#6b7280] uppercase">Dano Estimado</span>
-                                <span className="text-xs text-white font-bold font-mono">
+                                <span className={`text-xs font-bold font-mono transition-colors ${hasPending ? 'text-green-400' : 'text-white'}`}>
                                     {souls?.minDamage || 5}-{souls?.maxDamage || 10}
                                 </span>
-                            </div>
-                            <div className="text-[8px] text-[#4b5563] text-center italic leading-tight">
-                                "Justiça se faz com chumbo."
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Atributos */}
                 <div className="w-full flex flex-col gap-3 md:gap-4 order-last lg:order-first">
                     {ATTRIBUTES.map(({ key, label, icon, color, desc }) => {
-                        const value = profile[key] ?? 5
+                        const baseValue = profile[key] ?? 5
+                        const pendingValue = pending[key] || 0
+                        const totalValue = baseValue + pendingValue
+
                         return (
-                            <div key={key} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-black/45 border border-[#2b1f14] rounded-lg transition-all duration-300 group hover:border-gold/30">
+                            <div key={key} className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-black/45 border rounded-lg transition-all duration-300 group ${pendingValue > 0 ? 'border-gold shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'border-[#2b1f14]'}`}>
                                 <span className="text-xl md:text-2xl flex-shrink-0 w-8 text-center">{icon}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-baseline mb-2">
                                         <span className="text-base md:text-lg font-black uppercase text-[#e5e7eb] tracking-[0.1em]">{label}</span>
-                                        <span className="text-2xl md:text-3xl font-black font-mono" style={{ color, textShadow: `0 0 10px ${color}44` }}>{value}</span>
+                                        <div className="flex items-baseline gap-2">
+                                            {pendingValue > 0 && <span className="text-xs font-black text-gold animate-bounce">+{pendingValue}</span>}
+                                            <span className="text-2xl md:text-3xl font-black font-mono transition-all" style={{ color: pendingValue > 0 ? '#d4af37' : color, textShadow: `0 0 10px ${pendingValue > 0 ? '#d4af3744' : color + '44'}` }}>
+                                                {totalValue}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="flex gap-0.5 md:gap-1 mb-2 md:mb-2.5 overflow-hidden">
-                                        {Array(20).fill(null).map((_, i) => (
+                                        {Array(25).fill(null).map((_, i) => (
                                             <div key={i} className="flex-1 h-3 md:h-4 rounded-xs transition-all duration-300" style={{
-                                                background: i < value ? color : '#1a1a1a',
-                                                border: `1px solid ${i < value ? color + '66' : '#222'}`,
+                                                background: i < baseValue ? color : (i < totalValue ? '#d4af37' : '#1a1a1a'),
+                                                border: `1px solid ${i < baseValue ? color + '66' : (i < totalValue ? '#d4af37' : '#222')}`,
+                                                opacity: i >= baseValue && i < totalValue ? 0.8 : 1
                                             }} />
                                         ))}
                                     </div>
                                     <span className="text-[11px] md:text-sm text-[#9ca3af] italic leading-relaxed block">{desc}</span>
                                 </div>
+
                                 {profile.stat_points_available > 0 && (
-                                    <button onClick={() => spendPoint(key)} disabled={spending} className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-current/15 border border-current font-black text-lg md:text-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95" style={{ color }}>+</button>
+                                    <div className="flex flex-col gap-1">
+                                        <button
+                                            onClick={() => adjustPending(key, 1)}
+                                            disabled={totalPending >= profile.stat_points_available}
+                                            className="w-8 h-8 md:w-10 md:h-10 rounded-sm bg-gold/10 border border-gold/40 font-black text-lg text-gold flex items-center justify-center transition-all hover:bg-gold/20 disabled:opacity-20 active:scale-90"
+                                        >+</button>
+                                        {pendingValue > 0 && (
+                                            <button
+                                                onClick={() => adjustPending(key, -1)}
+                                                className="w-8 h-8 md:w-10 md:h-10 rounded-sm bg-red-900/10 border border-red-900/40 font-black text-lg text-red-500 flex items-center justify-center transition-all hover:bg-red-900/20 active:scale-90"
+                                            >-</button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )

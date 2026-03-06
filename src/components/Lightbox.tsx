@@ -11,10 +11,7 @@ interface LightboxProps {
 }
 
 export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxProps) {
-    const [isMounted, setIsMounted] = useState(false)
-
     useEffect(() => {
-        setIsMounted(true)
         if (isOpen) {
             document.body.style.overflow = 'hidden'
         } else {
@@ -25,7 +22,7 @@ export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxP
         }
     }, [isOpen])
 
-    if (!isMounted || !isOpen || !src) return null
+    if (!isOpen || !src) return null
 
     return (
         <div

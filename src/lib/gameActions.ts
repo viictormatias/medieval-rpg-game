@@ -459,6 +459,45 @@ export async function distributeStats(profileId: string, attr: 'strength' | 'agi
     return !updateError
 }
 
+export async function distributeStatsBatch(profileId: string, allocations: InitialStatAllocation): Promise<boolean> {
+    const { data: profile, error: getError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .single()
+
+    if (getError || !profile) return false
+
+    const totalPointsNeeded = Object.values(allocations).reduce((sum, val) => sum + (val || 0), 0)
+    if (profile.stat_points_available < totalPointsNeeded) return false
+
+    const updates: any = {
+        stat_points_available: profile.stat_points_available - totalPointsNeeded
+    }
+
+    let hpBonus = 0
+    for (const [key, points] of Object.entries(allocations)) {
+        if (points && points > 0) {
+            updates[key] = (profile[key] || 0) + points
+            if (key === 'vigor') {
+                hpBonus += points * 10
+            }
+        }
+    }
+
+    if (hpBonus > 0) {
+        updates.hp_max = (profile.hp_max || 100) + hpBonus
+        updates.hp_current = (profile.hp_current || 100) + hpBonus
+    }
+
+    const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', profileId)
+
+    return !updateError
+}
+
 export async function awardCombatRewards(profileId: string, xpGain: number, goldGain: number): Promise<boolean> {
     const { data: profile, error: getError } = await supabase
         .from('profiles')
