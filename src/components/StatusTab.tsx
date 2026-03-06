@@ -190,8 +190,16 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                     </div>
                 </div>
             ) : profile.stat_points_available > 0 && (
-                <div className="p-3 md:p-4 text-center rounded-sm border-2 border-dashed border-gold/40 bg-gold/5 text-[10px] md:text-xs font-bold text-gold uppercase tracking-[0.15em] shadow-lg animate-pulse">
-                    ✨ {profile.stat_points_available} ponto(s) de atributo disponível(is)
+                <div className="relative western-border p-4 md:p-6 text-center bg-gold/10 border-gold shadow-[0_0_30px_rgba(242,185,13,0.2)] animate-pulse overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gold"></div>
+                    <div className="absolute -top-10 -left-10 w-20 h-20 bg-gold/20 rotate-45 blur-xl group-hover:left-[110%] transition-all duration-1000"></div>
+                    <span className="text-xl md:text-2xl font-black text-gold uppercase tracking-[0.2em] block mb-2">
+                        ✨ EVOLUÇÃO DISPONÍVEL!
+                    </span>
+                    <span className="text-xs md:text-sm font-bold text-white uppercase tracking-widest">
+                        Você tem {profile.stat_points_available} ponto(s) para distribuir e se tornar mais forte.
+                    </span>
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gold"></div>
                 </div>
             )}
 

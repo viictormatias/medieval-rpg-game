@@ -166,6 +166,11 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                                 <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#d4af37] whitespace-nowrap">
                                     Nvl {profile.level}
                                 </span>
+                                {profile.stat_points_available > 0 && (
+                                    <span className="bg-gold text-black text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow-[0_0_8px_rgba(212,175,55,0.6)]">
+                                        UP!
+                                    </span>
+                                )}
                                 <span className="text-[10px] text-[#423020]">•</span>
                                 <span className="text-[10px] md:text-[12px] uppercase tracking-widest text-[#a52a2a] font-bold truncate">
                                     {playerClass}
