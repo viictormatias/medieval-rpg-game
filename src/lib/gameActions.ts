@@ -151,10 +151,17 @@ export async function ensureProfile(): Promise<Profile | null> {
         console.log('[DEBUG-PROFILE] No profile found for user:', currentUser.id, 'Error:', profileError);
         return null // Precisamos de seleção de classe
     }
+    
+    // Validação estrita: Nome deve ter pelo menos 3 caracteres, não ser um padrão de sistema, e ter classe/HP válidos
+    const isSystemName = profile.username && (
+        profile.username.startsWith('Jogador_') || 
+        profile.username.startsWith('Novo Jogador')
+    )
+    const hasValidName = profile.username && profile.username.trim().length >= 3 && !isSystemName
+    const hasValidStats = profile.class && profile.hp_max > 0
 
-    // Um perfil só é considerado "completo" se tiver uma classe E um username selecionados
-    if (!profile.class || !profile.username) {
-        console.log('[DEBUG-PROFILE] Perfil INCOMPLETO ou SKELETON detectado (id:', profile.id, ') - Forçando criação.');
+    if (!hasValidName || !hasValidStats) {
+        console.warn(`[AUTH] Perfil incompleto ou padrão detectado para o usuário ${currentUser.id} (${profile.username}). Redirecionando para criação.`)
         return null 
     }
 

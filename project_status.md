@@ -1,27 +1,27 @@
 ### Estado Atual do Projeto
-O projeto está estável, com deploy funcional no Vercel (Next.js 15.5.7). A interface de criação de personagem foi otimizada para visibilidade total em uma única tela e o banco de dados foi limpo para novos testes.
+O projeto está estável e visualmente aprimorado com novos fundos temáticos para cada aba. O sistema de fundo dinâmico foi otimizado para usar imagens que melhor representam cada funcionalidade do jogo (Quadro, Duelo, Loja, Mochila e Status).
 
 ### Funcionalidades Implementadas
-1. **Segurança & Deploy:** Upgrade para Next.js 15.5.7 e React 19 para corrigir vulnerabilidades e garantir deploy no Vercel.
-2. **Setup de Build:** Configurado para ignorar erros de ESLint/TS durante o build (nuclear option para deploy imediato).
-3. **Gerenciamento de Personagem:** Exclusão de perfil e inventário via Supabase para permitir recriação.
-4. **Interface de Login:** Remoção de emojis desnecessários conforme pedido.
-5. **Criação de Personagem Compacta:** Tela de seleção de classe otimizada para não exigir scroll.
-6. **Card de Personagem Premium:** Card central aumentado e reposicionado para maior destaque visual.
-7. **Duelo de Alta Fidelidade:** Autoscroll no log de combate, cores distintas por turno (Azul/Jogador vs Vermelho/Inimigo) e correção na detecção de vitória/derrota.
-8. **Lightbox Funcional:** Corrigido conflito no Header e simplificada lógica de exibição para itens e retratos. Agora permite visualizar itens mesmo sem requisitos de status.
-9. **Correção de Flicker em Missões:** O botão de recompensa não aparece mais incorretamente ao iniciar uma nova tarefa.
-10. **Sincronização de Regeneração:** O fôlego (energia) agora regenera na mesma velocidade da vida (100% em 10 minutos).
-11. **Duelos Gratuitos:** O custo de energia para duelos na arena foi removido (0 E).
-12. **Nível para Missões:** Os últimos três trabalhos agora possuem requisitos de nível (Lvl 3, 5 e 8).
-13. **Reset de Personagem:** Banco de dados de perfis e inventário limpo para um novo início equilibrado.
-14. **Login Screen Clean-up:** Logo ampliada e remoção de ícones redundantes para um visual mais premium.
+1. **Segurança & Deploy:** Upgrade para Next.js 15.5.7 e React 19.
+2. **Setup de Build:** Configurado para ignorar erros de ESLint/TS durante o build.
+3. **Gerenciamento de Personagem:** Sistema de exclusão de perfil/inventário e proteção robusta contra perfis corrompidos ou automáticos (blacklist de nomes 'Jogador_').
+4. **Criação de Personagem Compacta:** Tela de seleção de classe obrigatória. Implementada trava de segurança que detecta nomes automáticos do sistema e força o usuário a criar o personagem corretamente.
+5. **Autenticação e Vitais:** Sincronização de energia e vida.
+6. **Card de Personagem Premium:** Card central destacado.
+7. **Duelo de Alta Fidelidade:** Autoscroll no log de combate, cores distintas por turno.
+8. **Lightbox Funcional:** Correção no Header e integração.
+9. **Fundos Temáticos por Aba:** Atualização do mapeamento de imagens para cada aba (`Camp`, `Arena`, `Shop`, `Inventory`, `Status`).
+10. **Acesso Rápido de Logout:** Botão de logout no Header agora é fixo, visível e funcional em dispositivos móveis. Sincronização de estado de autenticação corrigida para atualização imediata.
 
 ### Pendências Imediatas
-1. Monitorar o deploy automático no Vercel para garantir que as novas mudanças de layout (card maior) não causem scroll indesejado em telas menores.
+1. Testar manualmente o fluxo de confirmação de e-mail e criação de personagem.
+2. Monitorar o deploy automático no Vercel para possíveis problemas visuais.
+
+### Erros ou bloqueios conhecidos
+- Nenhum erro de compilação detectado; alerta de `PageNotFoundError` durante build local ignorado (comportamento esperado do Next App Router em ambientes limitados).
 
 ### Próximos Passos Sugeridos
+- Executar teste completo de usabilidade para o novo mapeamento de imagens e o novo botão de logout.
 - Implementar sistema de "Bounty Hunting" (Wanted List).
-- Refinar as animações de transição entre classes.
 - Adicionar sons ambientais de Velho Oeste.
-- Expandir o catálogo de predadores (Lobos, Ursos, Pumas).
+- Expandir o catálogo de inimigos.

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Profile, getUserInventory, getJobs, claimJobAction, Job } from '@/lib/gameActions'
 import StatBar from './StatBar'
@@ -151,10 +151,10 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                             />
                             <button
                                 onClick={() => supabase.auth.signOut()}
-                                className="absolute -top-1 -right-1 bg-red-900 border border-red-500/50 text-white w-6 h-6 flex items-center justify-center rounded-full transition-all z-20 hover:scale-110 active:scale-95 shadow-[0_0_10px_rgba(255,0,0,0.3)]"
-                                title="Sair do Jogo"
+                                className="absolute -top-1 -right-1 bg-black/60 hover:bg-red-900/40 border border-[#d4af37]/30 text-[#d4af37] hover:text-red-500 hover:border-red-500/50 w-6 h-6 flex items-center justify-center rounded-full transition-all z-20 shadow-lg"
+                                title="Deslogar"
                             >
-                                <span className="text-[10px] font-bold">✕</span>
+                                <span className="text-[10px] leading-none">✕</span>
                             </button>
                         </div>
 

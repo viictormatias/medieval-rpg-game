@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { ensureProfile, Profile } from '@/lib/gameActions'
@@ -78,7 +78,27 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    // Escuta mudanças de auth para limpar o hash da URL (access_token)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      }
+      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
+        refreshProfile()
+      } else if (event === 'SIGNED_OUT') {
+        setProfile(null)
+        setSession(null)
+      }
+    })
+
+    // Limpa imediatamente no carregamento inicial caso already logged in via hash
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+
     refreshProfile()
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Listener para mudanças de autenticação (Login/Logout imediato)
@@ -159,11 +179,11 @@ export default function Dashboard() {
   ]
 
   const tabBackgrounds: Record<string, string> = {
-    camp: '/images/duelo2.jpeg',
-    arena: '/images/duelo3.jpeg',
-    shop: '/images/arma1.jpeg',
+    camp: '/images/loading1.jpeg',
+    arena: '/images/duelo1.jpeg',
+    shop: '/images/mercador.jpeg',
     inventory: '/images/arma2.jpeg',
-    status: '/images/duelo4.jpeg',
+    status: '/images/cacador-de-recompensas.jpeg',
   }
 
   return (
@@ -249,11 +269,21 @@ export default function Dashboard() {
             <div className="absolute inset-1 border border-dashed border-[#d4af37] opacity-20 pointer-events-none rounded-b-md rounded-tr-md z-2"></div>
 
             <div className="relative z-10 p-4 md:p-8">
-              {activeTab === 'camp' && <CampTab profile={profile} onRefresh={refreshProfile} />}
-              {activeTab === 'arena' && <ArenaTab profile={profile} onRefresh={refreshProfile} />}
-              {activeTab === 'shop' && <ShopTab profile={profile} onRefresh={refreshProfile} />}
-              {activeTab === 'inventory' && <InventoryTab profile={profile} onRefresh={refreshProfile} />}
-              {activeTab === 'status' && <StatusTab profile={profile} onRefresh={refreshProfile} />}
+              <div className={activeTab === 'camp' ? 'block' : 'hidden'}>
+                <CampTab profile={profile} onRefresh={refreshProfile} />
+              </div>
+              <div className={activeTab === 'arena' ? 'block' : 'hidden'}>
+                <ArenaTab profile={profile} onRefresh={refreshProfile} />
+              </div>
+              <div className={activeTab === 'shop' ? 'block' : 'hidden'}>
+                <ShopTab profile={profile} onRefresh={refreshProfile} />
+              </div>
+              <div className={activeTab === 'inventory' ? 'block' : 'hidden'}>
+                <InventoryTab profile={profile} onRefresh={refreshProfile} />
+              </div>
+              <div className={activeTab === 'status' ? 'block' : 'hidden'}>
+                <StatusTab profile={profile} onRefresh={refreshProfile} />
+              </div>
             </div>
           </div>
         </div>
