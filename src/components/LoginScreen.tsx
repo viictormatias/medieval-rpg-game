@@ -63,7 +63,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: () => 
 
                     <div className="flex flex-col gap-3 pt-4 w-full">
                         <button onClick={() => handleAuth(true)} disabled={loading || !email || !password} className="btn-western w-full py-4 text-base font-black shadow-xl">
-                            {loading ? <span className="animate-pulse italic">Engatilhando...</span> : '🤠 ENTRAR NO SALOON'}
+                            {loading ? <span className="animate-pulse italic">Engatilhando...</span> : 'ENTRAR NO SALOON'}
                         </button>
                         <button onClick={() => handleAuth(false)} disabled={loading || !email || !password} className="btn-western w-full py-4 text-sm font-black border-2 border-white/10 text-gray-400 hover:text-white transition-all bg-black/40">
                             REGISTRAR NOVO PISTOLEIRO
