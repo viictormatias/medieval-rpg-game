@@ -95,7 +95,7 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                 {jobs.map((job, idx) => {
                     const isActive = profile.current_job_id === job.id
                     const isOtherBusy = profile.current_job_id && !isActive
-                    const canStart = !profile.current_job_id && profile.energy >= job.energy_cost
+                    const canStart = !profile.current_job_id && profile.energy >= job.energy_cost && profile.level >= job.min_level
                     const jobIcon = getJobIcon(job.title)
                     const progressPct = isActive
                         ? Math.min(100, ((job.duration_seconds - timeLeft) / job.duration_seconds) * 100)
@@ -196,9 +196,11 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                                 >
                                     {isOtherBusy
                                         ? '🔒 OCUPADO'
-                                        : !canStart
-                                            ? '⚡ SEM ENERGIA'
-                                            : '▶ INICIAR MISSÃO'}
+                                        : profile.level < job.min_level
+                                            ? `⭐ LVL ${job.min_level}`
+                                            : !canStart
+                                                ? '⚡ SEM ENERGIA'
+                                                : '▶ INICIAR MISSÃO'}
                                 </button>
                             )}
                         </div>

@@ -37,6 +37,7 @@ export interface Job {
     reward_xp: number
     reward_gold: number
     energy_cost: number
+    min_level: number
 }
 
 export interface Enemy {
