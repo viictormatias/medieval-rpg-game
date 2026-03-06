@@ -1,6 +1,6 @@
 ﻿export type CoreStat = 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor' | 'hp_current' | 'energy'
 export type ScalingGrade = 'E' | 'D' | 'C' | 'B' | 'A' | 'S'
-export type ItemType = 'weapon' | 'shield' | 'chest' | 'helmet' | 'gloves' | 'legs' | 'boots' | 'consumable'
+export type ItemType = 'weapon' | 'shield' | 'chest' | 'helmet' | 'gloves' | 'legs' | 'boots' | 'consumable' | 'misc'
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 export interface Item {
@@ -38,13 +38,13 @@ export const ITEMS: Item[] = [
     { id: 'precision_rifle', name: 'Rifle de Precisão', type: 'weapon', price: 2500, rarity: 'legendary', description: 'Longo alcance e alto impacto.', requirements: { strength: 20, agility: 8 }, scaling: { strength: 'B', accuracy: 'A' }, stats: { strength: 30, agility: -6, accuracy: 20 }, min_damage: 60, max_damage: 80, image_url: '/images/precision_rifle.png', icon: '🔭' },
 
     // Chest
-    { id: 'sheriff_coat', name: 'Casaco do Xerife', type: 'chest', price: 2900, rarity: 'legendary', description: 'Respeito e proteção em um só traje.', stats: { defense: 70, vigor: 30, agility: -8 }, icon: '⭐' },
+    { id: 'sheriff_coat', name: 'Casaco do Xerife', type: 'chest', price: 2900, rarity: 'legendary', description: 'Respeito e proteção em um só traje.', stats: { defense: 70, vigor: 30, agility: -8 }, image_url: '/images/sheriff_coat.png', icon: '⭐' },
 
     // Helmets
     { id: 'cloth_hat', name: 'Chapéu de Pano', type: 'helmet', price: 120, rarity: 'common', description: 'Protege do sol e da poeira.', stats: { defense: 3, agility: 1 }, icon: '🤠' },
     { id: 'leather_hat', name: 'Chapéu de Couro Duro', type: 'helmet', price: 420, rarity: 'uncommon', description: 'Resistente para patrulha bruta.', requirements: { strength: 8 }, stats: { defense: 10, agility: -1 }, icon: '🤠' },
     { id: 'sheriff_hat', name: 'Chapéu do Xerife', type: 'helmet', price: 900, rarity: 'rare', description: 'Marca de autoridade no condado.', requirements: { strength: 12 }, stats: { defense: 18, vigor: 3, agility: -1 }, icon: '🤠' },
-    { id: 'bandit_mask', name: 'Máscara de Bandido', type: 'helmet', price: 1500, rarity: 'epic', description: 'Intimida e esconde a identidade.', requirements: { agility: 12 }, stats: { defense: 9, accuracy: 4, agility: 3 }, icon: '🥷' },
+    { id: 'bandit_mask', name: 'Máscara de Bandido', type: 'helmet', price: 1500, rarity: 'epic', description: 'Intimida e esconde a identidade.', requirements: { agility: 12 }, stats: { defense: 9, accuracy: 4, agility: 3 }, image_url: '/images/bandit_mask.png', icon: '🥷' },
     { id: 'trigger_king_hat', name: 'Chapéu da Lenda do Gatilho', type: 'helmet', price: 2300, rarity: 'legendary', description: 'Marca de uma lenda viva entre os pistoleiros.', requirements: { vigor: 12, accuracy: 12 }, stats: { defense: 12, accuracy: 9, vigor: 6 }, icon: '🤠' },
 
     // Gloves
@@ -75,5 +75,9 @@ export const ITEMS: Item[] = [
 
     // Consumables
     { id: 'medical_kit', name: 'Kit Médico', type: 'consumable', price: 150, rarity: 'uncommon', description: 'Ataduras e remédios.', stats: { hp_current: 50 }, image_url: '/images/medical_kit.png', icon: '💉' },
-    { id: 'canned_beans', name: 'Feijão Enlatado', type: 'consumable', price: 50, rarity: 'common', description: 'Recupera o fôlego e a energia.', stats: { energy: 30 }, icon: '🥫' }
+    { id: 'canned_beans', name: 'Feijão Enlatado', type: 'consumable', price: 50, rarity: 'common', description: 'Recupera o fôlego e a energia.', stats: { energy: 30 }, icon: '🥫' },
+
+    // Misc / Utilities
+    { id: 'leather_bag', name: 'Alforje de Couro', type: 'misc', price: 450, rarity: 'rare', description: 'Um saco extra de montaria. Libera a BAG 2 no seu inventário permanentemente.', image_url: '/images/leather_bag.png', icon: '🎒' }
 ]
+

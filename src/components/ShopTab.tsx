@@ -35,7 +35,8 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
         gloves: 'Luvas',
         legs: 'Calcas',
         boots: 'Botas',
-        consumable: 'Suprimentos'
+        consumable: 'Suprimentos',
+        misc: 'Diversos'
     }
 
     const handleBuy = async (item: Item) => {
@@ -58,7 +59,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                     Loja da Fronteira
                 </h2>
                 <div className="flex flex-wrap gap-1.5 justify-center bg-[#1a120c] p-1.5 md:p-2 rounded-sm border border-[#2b1f14]">
-                    {(['all', 'weapon', 'shield', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'consumable'] as Array<'all' | ItemType>).map((f) => (
+                    {(['all', 'weapon', 'shield', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'consumable', 'misc'] as Array<'all' | ItemType>).map((f) => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}

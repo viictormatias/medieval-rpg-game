@@ -471,6 +471,7 @@ export async function claimJobAction(profile: Profile, job: Job) {
         console.error('[DEBUG-JOB] Error claiming job rewards:', error.message, 'Code:', error.code, 'Details:', error.details);
     } else {
         console.log('[DEBUG-JOB] Job rewards claimed successfully:', job.title);
+        await grantDrops(normalizedProfile.id, false);
     }
 
     return !error
@@ -578,6 +579,62 @@ export async function awardCombatRewards(profileId: string, xpGain: number, gold
     return !updateError
 }
 
+async function grantDrops(profileId: string, isDuel: boolean) {
+    let consumableDrop = undefined
+    let equipmentDrop = undefined
+
+    // Roll 1: Consumível (20% chance)
+    if (Math.random() < 0.20) {
+        const consumables = ITEMS.filter(i => i.type === 'consumable')
+        const roll = Math.floor(Math.random() * consumables.length)
+        const itemSpec = consumables[roll]
+
+        if (itemSpec) {
+            const { error: insErr } = await supabase.from('inventory').insert({
+                profile_id: profileId,
+                item_id: itemSpec.id
+            })
+            if (!insErr) {
+                consumableDrop = { name: itemSpec.name, icon: itemSpec.icon }
+            }
+        }
+    }
+
+    // Roll 2: Equipamento (20% chance de ocorrência)
+    if (Math.random() < 0.20) {
+        const rarityRoll = Math.random() * 100
+        let targetRarity: ItemRarity = 'common'
+
+        if (rarityRoll < 0.5) targetRarity = 'legendary'
+        else if (rarityRoll < 4) targetRarity = 'epic'
+        else if (rarityRoll < 12) targetRarity = 'rare'
+        else if (rarityRoll < 35) targetRarity = 'uncommon'
+        else targetRarity = 'common'
+
+        const possibleItems = ITEMS.filter(i => {
+            if (i.type === 'consumable') return false;
+            // Armas só podem ser dropadas durante Duelos, em trabalhos não.
+            if (!isDuel && i.type === 'weapon') return false;
+            return i.rarity === targetRarity;
+        })
+
+        if (possibleItems.length > 0) {
+            const roll = Math.floor(Math.random() * possibleItems.length)
+            const itemSpec = possibleItems[roll]
+
+            const { error: insErr } = await supabase.from('inventory').insert({
+                profile_id: profileId,
+                item_id: itemSpec.id
+            })
+            if (!insErr) {
+                equipmentDrop = { name: itemSpec.name, icon: itemSpec.icon, rarity: itemSpec.rarity }
+            }
+        }
+    }
+
+    return { consumableDrop, equipmentDrop }
+}
+
 function getArenaRewards(enemy: Enemy) {
     const xpGain = Math.max(8, Math.floor(enemy.level * 12 + enemy.hp_max * 0.18))
     const goldGain = Math.max(5, Math.floor(enemy.level * 7 + enemy.strength * 0.6))
@@ -608,6 +665,18 @@ export async function resolveArenaCombat(
     }
 
     const normalizedProfile = await syncVitals(profile)
+
+    if (normalizedProfile.job_finish_at && new Date(normalizedProfile.job_finish_at) > new Date()) {
+        return {
+            success: false,
+            playerWon,
+            xpGain: 0,
+            goldGain: 0,
+            energyCost: 0,
+            hpAfter: normalizedProfile.hp_current
+        }
+    }
+
     if (normalizedProfile.energy < COMBAT_ENERGY_COST) {
         return {
             success: false,
@@ -637,48 +706,9 @@ export async function resolveArenaCombat(
     let equipmentDrop = undefined
 
     if (playerWon) {
-        // Roll 1: Consumível (20% chance)
-        if (Math.random() < 0.20) {
-            const consumables = ITEMS.filter(i => i.type === 'consumable')
-            const roll = Math.floor(Math.random() * consumables.length)
-            const itemSpec = consumables[roll]
-
-            if (itemSpec) {
-                const { error: insErr } = await supabase.from('inventory').insert({
-                    profile_id: normalizedProfile.id,
-                    item_id: itemSpec.id
-                })
-                if (!insErr) {
-                    consumableDrop = { name: itemSpec.name, icon: itemSpec.icon }
-                }
-            }
-        }
-
-        // Roll 2: Equipamento (20% chance de ocorrência)
-        if (Math.random() < 0.20) {
-            const rarityRoll = Math.random() * 100
-            let targetRarity: ItemRarity = 'common'
-
-            if (rarityRoll < 0.5) targetRarity = 'legendary'
-            else if (rarityRoll < 4) targetRarity = 'epic'
-            else if (rarityRoll < 12) targetRarity = 'rare'
-            else if (rarityRoll < 35) targetRarity = 'uncommon'
-            else targetRarity = 'common'
-
-            const possibleItems = ITEMS.filter(i => i.rarity === targetRarity && i.type !== 'consumable')
-            if (possibleItems.length > 0) {
-                const roll = Math.floor(Math.random() * possibleItems.length)
-                const itemSpec = possibleItems[roll]
-
-                const { error: insErr } = await supabase.from('inventory').insert({
-                    profile_id: normalizedProfile.id,
-                    item_id: itemSpec.id
-                })
-                if (!insErr) {
-                    equipmentDrop = { name: itemSpec.name, icon: itemSpec.icon, rarity: itemSpec.rarity }
-                }
-            }
-        }
+        const drops = await grantDrops(normalizedProfile.id, true)
+        consumableDrop = drops.consumableDrop
+        equipmentDrop = drops.equipmentDrop
     }
 
     const { error: updateError } = await supabase

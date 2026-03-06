@@ -28,6 +28,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
     const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
+    const [activeBagIndex, setActiveBagIndex] = useState<number>(0)
 
     const FILTER_LABELS: Record<'all' | ItemType, string> = {
         all: 'Tudo',
@@ -38,7 +39,8 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         gloves: 'Luvas',
         legs: 'Calcas',
         boots: 'Botas',
-        consumable: 'Consumiveis'
+        consumable: 'Consumiveis',
+        misc: 'Diversos'
     }
 
     const loadInventory = async () => {
@@ -94,7 +96,12 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
 
     const unequippedItems = itemsWithDetails.filter(i => !i.is_equipped)
     const filteredUnequippedItems = unequippedItems.filter(it => filter === 'all' || it.type === filter)
-    const grid = Array(GRID_SIZE).fill(null).map((_, i) => filteredUnequippedItems[i] || null)
+    
+    // Calcula quantos slots e bags o jogador tem
+    const hasBag2 = itemsWithDetails.some(i => i.id === 'leather_bag' || i.item_id === 'leather_bag')
+    const totalSlots = hasBag2 ? 60 : 30
+    const displayedItems = filteredUnequippedItems.slice(activeBagIndex * 30, (activeBagIndex + 1) * 30)
+    const grid = Array(GRID_SIZE).fill(null).map((_, i) => displayedItems[i] || null)
 
     const handleDropOnPaperdoll = async (e: React.DragEvent, slotType: ItemType) => {
         e.preventDefault()
@@ -277,11 +284,27 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                 </div>
 
                 <div className="mt-4 flex gap-1 md:gap-2">
-                    {['BAG 1', 'BAG 2'].map((b, i) => (
-                        <div key={b} className={`flex-1 py-1 text-center text-[8px] md:text-[9px] border font-bold uppercase ${i === 0 ? 'border-gold/50 text-gold bg-gold/5' : 'border-white/5 text-gray-700'}`}>
-                            {b}
-                        </div>
-                    ))}
+                    {['BAG 1', 'BAG 2'].map((b, i) => {
+                        const isUnlocked = i === 0 || hasBag2
+                        const isActive = activeBagIndex === i
+                        
+                        return (
+                            <button 
+                                key={b} 
+                                disabled={!isUnlocked}
+                                onClick={() => setActiveBagIndex(i)}
+                                className={`flex-1 py-1 text-center text-[8px] md:text-[9px] border font-bold uppercase transition-all ${
+                                    isActive 
+                                        ? 'border-gold/50 text-gold bg-gold/10 shadow-[0_0_8px_rgba(212,175,55,0.2)]' 
+                                        : isUnlocked 
+                                            ? 'border-white/10 text-gray-400 hover:text-white hover:border-white/30 cursor-pointer' 
+                                            : 'border-white/5 text-gray-700 bg-black/50 cursor-not-allowed line-through'
+                                }`}
+                            >
+                                {b} {!isUnlocked && <span className="text-[6px] ml-1">(Fechado)</span>}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 

@@ -107,6 +107,10 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
 
     const handleFight = async () => {
         if (!selectedEnemy) return
+        if (profile.job_finish_at && new Date(profile.job_finish_at) > new Date()) {
+            alert('Você não pode duelar enquanto trabalha.')
+            return
+        }
         if (profile.energy < COMBAT_ENERGY_COST) {
             alert(`Energia insuficiente. Necessário: ${COMBAT_ENERGY_COST}.`)
             return
@@ -403,10 +407,14 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                 {!showCollectButton ? (
                     <button
                         onClick={handleFight}
-                        disabled={isFighting || !selectedEnemy || profile.energy < COMBAT_ENERGY_COST}
+                        disabled={isFighting || !selectedEnemy || profile.energy < COMBAT_ENERGY_COST || (profile.job_finish_at ? new Date(profile.job_finish_at) > new Date() : false)}
                         className="btn-western py-4 px-8 text-base font-black min-w-[200px]"
                     >
-                        {isFighting ? '🔫 DUELANDO...' : '⚔️ INICIAR DUELO'}
+                        {profile.job_finish_at && new Date(profile.job_finish_at) > new Date() 
+                            ? '⏳ TRABALHANDO...' 
+                            : isFighting 
+                                ? '🔫 DUELANDO...' 
+                                : '⚔️ INICIAR DUELO'}
                     </button>
                 ) : (
                     <button
