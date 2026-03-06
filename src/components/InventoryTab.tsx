@@ -16,9 +16,10 @@ const RARITY_COLORS: Record<string, { border: string; glow: string; label: strin
 interface InventoryTabProps {
     profile: Profile
     onRefresh: () => void
+    isActive?: boolean
 }
 
-export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) {
+export default function InventoryTab({ profile, onRefresh, isActive }: InventoryTabProps) {
     const [invItems, setInvItems] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
@@ -46,7 +47,11 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
         setLoading(false)
     }
 
-    useEffect(() => { loadInventory() }, [profile.id])
+    useEffect(() => { 
+        if (isActive === undefined || isActive) {
+            loadInventory() 
+        }
+    }, [profile.id, isActive])
 
     const handleToggleEquip = async (inventoryId: string) => {
         const success = await toggleEquip(profile.id, inventoryId)

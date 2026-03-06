@@ -287,7 +287,7 @@ export default function Dashboard() {
                 <ShopTab profile={profile} onRefresh={refreshProfile} />
               </div>
               <div className={activeTab === 'inventory' ? 'block' : 'hidden'}>
-                <InventoryTab profile={profile} onRefresh={refreshProfile} />
+                <InventoryTab profile={profile} onRefresh={refreshProfile} isActive={activeTab === 'inventory'} />
               </div>
               <div className={activeTab === 'status' ? 'block' : 'hidden'}>
                 <StatusTab profile={profile} onRefresh={refreshProfile} />

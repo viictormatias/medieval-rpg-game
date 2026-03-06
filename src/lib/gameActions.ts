@@ -742,9 +742,13 @@ export async function consumeItem(profileId: string, inventoryId: string, item: 
         return { success: false, message: 'Você já está com os stats no máximo!' }
     }
 
-    // Delete item
-    const { error: delErr } = await supabase.from('inventory').delete().eq('id', inventoryId)
+    // Delete item (explicitly requesting returned rows to verify deletion over RLS)
+    const { data: delData, error: delErr } = await supabase.from('inventory').delete().eq('id', inventoryId).select()
     if (delErr) return { success: false, message: 'Erro ao remover item' }
+    if (!delData || delData.length === 0) {
+        console.error('[CONSUME] Falha ao deletar item. Provavelmente RLS Policy de DELETE ausente na tabela inventory:', inventoryId);
+        return { success: false, message: 'ERRO NO BANCO: Item não pôde ser consumido. Verifique se a tabela "inventory" possui a política (RLS) que permite DELETE para usuarios logados.' }
+    }
 
     // Update profile
     const { error: updErr } = await supabase.from('profiles').update({
