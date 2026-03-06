@@ -49,6 +49,7 @@ export default function Dashboard() {
           setSession(s)
           if (s) {
             const data = await ensureProfile()
+            console.log('[DEBUG-RELOAD] Data from ensureProfile:', data);
             setProfile(data)
           } else {
             setProfile(null)
@@ -77,6 +78,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     refreshProfile()
+  }, [])
+
+  // Listener para mudanças de autenticação (Login/Logout imediato)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, _session: any) => {
+      console.log('[DEBUG-AUTH] Event:', event);
+      refreshProfile();
+    });
+    return () => subscription.unsubscribe();
   }, [])
 
   useEffect(() => {

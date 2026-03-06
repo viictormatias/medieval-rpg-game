@@ -151,10 +151,10 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                             />
                             <button
                                 onClick={() => supabase.auth.signOut()}
-                                className="absolute -top-1 -right-1 bg-black/80 border border-white/20 text-white/40 hover:text-white hover:border-red-500/50 w-5 h-5 flex items-center justify-center rounded-sm transition-all z-20 group-hover:opacity-100 opacity-0"
-                                title="Deslogar"
+                                className="absolute -top-1 -right-1 bg-red-900 border border-red-500/50 text-white w-6 h-6 flex items-center justify-center rounded-full transition-all z-20 hover:scale-110 active:scale-95 shadow-[0_0_10px_rgba(255,0,0,0.3)]"
+                                title="Sair do Jogo"
                             >
-                                <span className="text-[10px]">✕</span>
+                                <span className="text-[10px] font-bold">✕</span>
                             </button>
                         </div>
 

@@ -148,13 +148,16 @@ export async function ensureProfile(): Promise<Profile | null> {
         .single()
 
     if (profileError || !profile) {
+        console.log('[DEBUG-PROFILE] No profile found for user:', currentUser.id, 'Error:', profileError);
         return null // Precisamos de seleção de classe
     }
 
     if (!profile.class) {
+        console.log('[DEBUG-PROFILE] Profile exists but no class selected:', profile.id);
         return null // Perfil existe mas sem classe selecionada
     }
 
+    console.log('[DEBUG-PROFILE] Profile loaded successfully:', profile.username, 'Class:', profile.class);
     return await syncVitals(profile)
 }
 
@@ -394,6 +397,12 @@ export async function startJobAction(profileId: string, job: Job) {
         })
         .eq('id', profileId)
 
+    if (error) {
+        console.error('[DEBUG-JOB] Error starting job:', error.message, 'Code:', error.code, 'Details:', error.details);
+    } else {
+        console.log('[DEBUG-JOB] Job started successfully:', job.title);
+    }
+
     return !error
 }
 
@@ -431,6 +440,12 @@ export async function claimJobAction(profile: Profile, job: Job) {
             job_finish_at: null
         })
         .eq('id', normalizedProfile.id)
+
+    if (error) {
+        console.error('[DEBUG-JOB] Error claiming job rewards:', error.message, 'Code:', error.code, 'Details:', error.details);
+    } else {
+        console.log('[DEBUG-JOB] Job rewards claimed successfully:', job.title);
+    }
 
     return !error
 }

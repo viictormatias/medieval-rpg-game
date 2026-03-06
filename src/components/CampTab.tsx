@@ -75,7 +75,11 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
             return
         }
         const success = await startJobAction(profile.id, job)
-        if (success) onRefresh()
+        if (success) {
+            onRefresh()
+        } else {
+            alert('Falha ao iniciar missão. Verifique sua conexão ou se já está em uma missão.')
+        }
     }
 
     const handleClaim = async () => {
