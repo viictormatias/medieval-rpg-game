@@ -75,7 +75,7 @@ export const ITEMS: Item[] = [
 
     // Consumables
     { id: 'medical_kit', name: 'Kit Médico', type: 'consumable', price: 150, rarity: 'uncommon', description: 'Ataduras e remédios.', stats: { hp_current: 50 }, image_url: '/images/medical_kit.png', icon: '💉' },
-    { id: 'canned_beans', name: 'Feijão Enlatado', type: 'consumable', price: 50, rarity: 'common', description: 'Recupera o fôlego e a energia.', stats: { energy: 30 }, icon: '🥫' },
+    { id: 'canned_beans', name: 'Feijão Enlatado', type: 'consumable', price: 50, rarity: 'common', description: 'Recupera o fôlego e a energia.', stats: { energy: 30 }, image_url: '/images/canned_beans.png', icon: '🥫' },
 
     // Misc / Utilities
     { id: 'leather_bag', name: 'Alforje de Couro', type: 'misc', price: 450, rarity: 'rare', description: 'Um saco extra de montaria. Libera a BAG 2 no seu inventário permanentemente.', image_url: '/images/leather_bag.png', icon: '🎒' }
