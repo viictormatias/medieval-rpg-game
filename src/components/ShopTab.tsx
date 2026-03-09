@@ -17,18 +17,18 @@ const RARITY_COLORS: Record<string, { border: string; glow: string; label: strin
 function ItemIcon({ item, className = "" }: { item: any; className?: string }) {
     const [imgError, setImgError] = useState(false)
     const displayUrl = item.image_url
-    
+
     if (displayUrl && !imgError) {
         return (
-            <img 
-                src={displayUrl} 
-                alt={item.name} 
+            <img
+                src={displayUrl}
+                alt={item.name}
                 className={`w-full h-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.08] group-hover:brightness-110 ${className}`}
                 onError={() => setImgError(true)}
             />
         )
     }
-    
+
     return <span className="text-xl md:text-2xl">{item.icon}</span>
 }
 
@@ -55,8 +55,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
         gloves: 'Luvas',
         legs: 'Calcas',
         boots: 'Botas',
-        consumable: 'Suprimentos',
-        relic: 'RelÃ­quias'
+        consumable: 'Suprimentos'
     }
 
     const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -87,7 +86,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
         const success = await buyItem(profile.id, item.id, item.price)
         if (success) {
             onRefresh()
-            loadInventory() 
+            loadInventory()
         } else {
             alert('Falha na compra. Tente novamente.')
         }
@@ -147,7 +146,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 justify-center bg-[#1a120c] p-1.5 md:p-2 rounded-sm border border-[#2b1f14]">
-                    {(['all', 'weapon', 'shield', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'consumable', 'relic'] as Array<'all' | ItemType>).map((f) => (
+                    {(['all', 'weapon', 'shield', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'consumable'] as Array<'all' | ItemType>).map((f) => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}

@@ -152,10 +152,10 @@ export async function ensureProfile(): Promise<Profile | null> {
         console.log('[DEBUG-PROFILE] No profile found for user:', currentUser.id, 'Error:', profileError);
         return null // Precisamos de seleção de classe
     }
-    
+
     // Validação estrita: Nome deve ter pelo menos 3 caracteres, não ser um padrão de sistema, e ter classe/HP válidos
     const isSystemName = profile.username && (
-        profile.username.startsWith('Jogador_') || 
+        profile.username.startsWith('Jogador_') ||
         profile.username.startsWith('Novo Jogador')
     )
     const hasValidName = profile.username && profile.username.trim().length >= 3 && !isSystemName
@@ -163,7 +163,7 @@ export async function ensureProfile(): Promise<Profile | null> {
 
     if (!hasValidName || !hasValidStats) {
         console.warn(`[AUTH] Perfil incompleto ou padrão detectado para o usuário ${currentUser.id} (${profile.username}). Redirecionando para criação.`)
-        return null 
+        return null
     }
 
     console.log('[DEBUG-PROFILE] Perfil carregado com sucesso:', {
@@ -335,7 +335,7 @@ export async function sellItem(profileId: string, inventoryId: string, sellPrice
         .eq('id', inventoryId)
         .eq('profile_id', profileId)
         .single()
-        
+
     if (!item || item.is_equipped) return false
 
     // 2. Excluir o item do inventário
@@ -514,6 +514,7 @@ export async function claimJobAction(profile: Profile, job: Job) {
         console.error('[DEBUG-JOB] Error claiming job rewards:', error.message, 'Code:', error.code, 'Details:', error.details);
     } else {
         console.log('[DEBUG-JOB] Job rewards claimed successfully:', job.title);
+        await grantDrops(normalizedProfile.id, false);
     }
 
     return !error
@@ -621,6 +622,62 @@ export async function awardCombatRewards(profileId: string, xpGain: number, gold
     return !updateError
 }
 
+async function grantDrops(profileId: string, isDuel: boolean) {
+    let consumableDrop = undefined
+    let equipmentDrop = undefined
+
+    // Roll 1: Consumível (20% chance)
+    if (Math.random() < 0.20) {
+        const consumables = ITEMS.filter(i => i.type === 'consumable')
+        const roll = Math.floor(Math.random() * consumables.length)
+        const itemSpec = consumables[roll]
+
+        if (itemSpec) {
+            const { error: insErr } = await supabase.from('inventory').insert({
+                profile_id: profileId,
+                item_id: itemSpec.id
+            })
+            if (!insErr) {
+                consumableDrop = { name: itemSpec.name, icon: itemSpec.icon }
+            }
+        }
+    }
+
+    // Roll 2: Equipamento (20% chance de ocorrência)
+    if (Math.random() < 0.20) {
+        const rarityRoll = Math.random() * 100
+        let targetRarity: ItemRarity = 'common'
+
+        if (rarityRoll < 0.5) targetRarity = 'legendary'
+        else if (rarityRoll < 4) targetRarity = 'epic'
+        else if (rarityRoll < 12) targetRarity = 'rare'
+        else if (rarityRoll < 35) targetRarity = 'uncommon'
+        else targetRarity = 'common'
+
+        const possibleItems = ITEMS.filter(i => {
+            if (i.type === 'consumable') return false;
+            // Armas só podem ser dropadas durante Duelos, em trabalhos não.
+            if (!isDuel && i.type === 'weapon') return false;
+            return i.rarity === targetRarity;
+        })
+
+        if (possibleItems.length > 0) {
+            const roll = Math.floor(Math.random() * possibleItems.length)
+            const itemSpec = possibleItems[roll]
+
+            const { error: insErr } = await supabase.from('inventory').insert({
+                profile_id: profileId,
+                item_id: itemSpec.id
+            })
+            if (!insErr) {
+                equipmentDrop = { name: itemSpec.name, icon: itemSpec.icon, rarity: itemSpec.rarity }
+            }
+        }
+    }
+
+    return { consumableDrop, equipmentDrop }
+}
+
 function getArenaRewards(enemy: Enemy) {
     const xpGain = Math.max(8, Math.floor(enemy.level * 12 + enemy.hp_max * 0.18))
     const goldGain = Math.max(5, Math.floor(enemy.level * 7 + enemy.strength * 0.6))
@@ -710,9 +767,7 @@ export async function resolveArenaCombat(
 
     if (playerWon) {
         // Roll 1: Consumível (20% chance)
-        const dropChance = Math.min(0.95, 0.20 + (relicBonuses.dropPct / 100))
-
-        if (Math.random() < dropChance) {
+        if (Math.random() < 0.20) {
             const consumables = ITEMS.filter(i => i.type === 'consumable')
             const roll = Math.floor(Math.random() * consumables.length)
             const itemSpec = consumables[roll]
@@ -729,7 +784,7 @@ export async function resolveArenaCombat(
         }
 
         // Roll 2: Equipamento (20% chance de ocorrência)
-        if (Math.random() < dropChance) {
+        if (Math.random() < 0.20) {
             const rarityRoll = Math.random() * 100
             let targetRarity: ItemRarity = 'common'
 
@@ -816,9 +871,13 @@ export async function consumeItem(profileId: string, inventoryId: string, item: 
         return { success: false, message: 'Você já está com os stats no máximo!' }
     }
 
-    // Delete item
-    const { error: delErr } = await supabase.from('inventory').delete().eq('id', inventoryId)
+    // Delete item (explicitly requesting returned rows to verify deletion over RLS)
+    const { data: delData, error: delErr } = await supabase.from('inventory').delete().eq('id', inventoryId).select()
     if (delErr) return { success: false, message: 'Erro ao remover item' }
+    if (!delData || delData.length === 0) {
+        console.error('[CONSUME] Falha ao deletar item. Provavelmente RLS Policy de DELETE ausente na tabela inventory:', inventoryId);
+        return { success: false, message: 'ERRO NO BANCO: Item não pôde ser consumido. Verifique se a tabela "inventory" possui a política (RLS) que permite DELETE para usuarios logados.' }
+    }
 
     // Update profile
     const { error: updErr } = await supabase.from('profiles').update({

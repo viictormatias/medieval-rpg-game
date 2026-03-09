@@ -30,6 +30,7 @@ const CLASS_PORTRAITS: Record<string, string> = {
 }
 
 export default function Header({ profile, onRefresh }: { profile: Profile; onRefresh: () => void }) {
+    const headerRef = useRef<HTMLElement>(null)
     const [invItems, setInvItems] = useState<any[]>([])
     const [jobs, setJobs] = useState<Job[]>([])
     const [timeLeft, setTimeLeft] = useState<number>(0)
@@ -43,6 +44,26 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
         getUserInventory(profile.id).then(items => setInvItems(items || []))
         getJobs().then(setJobs)
     }, [profile.id])
+
+    useEffect(() => {
+        if (!headerRef.current || typeof window === 'undefined') return
+
+        const setHeaderHeight = () => {
+            const h = headerRef.current?.offsetHeight || 0
+            document.documentElement.style.setProperty('--header-height', `${h}px`)
+        }
+
+        setHeaderHeight()
+
+        const ro = new ResizeObserver(setHeaderHeight)
+        ro.observe(headerRef.current)
+        window.addEventListener('resize', setHeaderHeight)
+
+        return () => {
+            ro.disconnect()
+            window.removeEventListener('resize', setHeaderHeight)
+        }
+    }, [])
 
     // Job timer logic
     useEffect(() => {
@@ -119,7 +140,9 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
     }
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#2b1f14] shadow-2xl"
+        <header
+            ref={headerRef}
+            className="fixed top-0 left-0 right-0 z-50 border-b border-[#2b1f14] shadow-2xl"
             style={{
                 background: 'linear-gradient(180deg, #2a1c11 0%, #170d07 100%)',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05)',
@@ -146,7 +169,8 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                                 fallbackEmoji="🤠"
                                 borderColor="gold"
                                 size="sm"
-                                className="!gap-0"
+                                name={profile.username}
+                                className="scale-90 md:scale-100 origin-left"
                             />
                             <button
                                 onClick={() => supabase.auth.signOut()}

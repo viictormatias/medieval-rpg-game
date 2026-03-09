@@ -58,11 +58,10 @@ export function checkItemRequirements(
         vigor: 'VIGOR',
         defense: 'DEFESA'
     }
-    
+
     return {
         meets: unmet.length === 0,
-        unmet,
-        unmetLabels: unmet.map(r => `${ATTRIBUTE_LABELS[r.attr] || r.attr.toUpperCase()} ${r.needed} (Faltam ${r.diff})`)
+        unmetLabels: unmet.map(([attr, needed]) => `${ATTRIBUTE_LABELS[attr] || attr.toUpperCase()} ${needed}`)
     }
 }
 

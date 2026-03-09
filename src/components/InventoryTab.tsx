@@ -16,27 +16,28 @@ const RARITY_COLORS: Record<string, { border: string; glow: string; label: strin
 function ItemIcon({ item, className = "" }: { item: any; className?: string }) {
     const [imgError, setImgError] = useState(false)
     const displayUrl = item.image_url
-    
+
     if (displayUrl && !imgError) {
         return (
-            <img 
-                src={displayUrl} 
-                alt={item.name} 
+            <img
+                src={displayUrl}
+                alt={item.name}
                 className={`w-full h-full object-contain ${className}`}
                 onError={() => setImgError(true)}
             />
         )
     }
-    
+
     return <span className="text-xl md:text-2xl filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">{item.icon}</span>
 }
 
 interface InventoryTabProps {
     profile: Profile
     onRefresh: () => void
+    isActive?: boolean
 }
 
-export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) {
+export default function InventoryTab({ profile, onRefresh, isActive }: InventoryTabProps) {
     const [invItems, setInvItems] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
@@ -45,6 +46,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
     const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
+    const [activeBagIndex, setActiveBagIndex] = useState<number>(0)
 
     const FILTER_LABELS: Record<'all' | ItemType, string> = {
         all: 'Tudo',
@@ -55,27 +57,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
         gloves: 'Luvas',
         legs: 'Calcas',
         boots: 'Botas',
-        consumable: 'Consumiveis',
-        relic: 'Relíquias'
-    }
-
-    const ITEM_TYPE_LABELS: Record<ItemType, string> = {
-        weapon: 'Arma',
-        shield: 'Acessório Extra',
-        helmet: 'Chapéu',
-        chest: 'Casaco',
-        gloves: 'Luvas',
-        legs: 'Calça',
-        boots: 'Botas',
-        consumable: 'Consumível',
-        relic: 'Relíquia'
-    }
-
-    const relicEffectsForDisplay = (item: any) => {
-        const effects: string[] = []
-        if (item?.relic_effect?.gold_per_duel_pct) effects.push(`+${item.relic_effect.gold_per_duel_pct}% Ouro por duelo`)
-        if (item?.relic_effect?.item_drop_per_duel_pct) effects.push(`+${item.relic_effect.item_drop_per_duel_pct}% Chance de drop`)
-        return effects
+        consumable: 'Consumiveis'
     }
 
     const loadInventory = async () => {
@@ -84,7 +66,11 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
         setLoading(false)
     }
 
-    useEffect(() => { loadInventory() }, [profile.id])
+    useEffect(() => {
+        if (isActive === undefined || isActive) {
+            loadInventory()
+        }
+    }, [profile.id, isActive])
 
     const handleToggleEquip = async (inventoryId: string) => {
         const success = await toggleEquip(profile.id, inventoryId)
@@ -122,7 +108,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
     const itemsWithDetails = invItems.map(invEntry => {
         const spec = CATALOG_ITEMS.find(it => it.id === invEntry.item_id)
         if (!spec) return null
-        return { ...spec, ...invEntry, catalogId: spec.id }
+        return { ...spec, quantity: invEntry.quantity || 1, is_equipped: invEntry.is_equipped, inventory_id: invEntry.id }
     }).filter(Boolean) as any[]
 
     const equippedItems = itemsWithDetails.filter(i => i.is_equipped)
@@ -138,13 +124,18 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
 
     const unequippedItems = itemsWithDetails.filter(i => !i.is_equipped)
     const filteredUnequippedItems = unequippedItems.filter(it => filter === 'all' || it.type === filter)
-    const grid = Array(GRID_SIZE).fill(null).map((_, i) => filteredUnequippedItems[i] || null)
+
+    // Calcula quantos slots e bags o jogador tem
+    const hasBag2 = itemsWithDetails.some(i => i.id === 'leather_bag' || i.item_id === 'leather_bag')
+    const totalSlots = hasBag2 ? 60 : 30
+    const displayedItems = filteredUnequippedItems.slice(activeBagIndex * 30, (activeBagIndex + 1) * 30)
+    const grid = Array(GRID_SIZE).fill(null).map((_, i) => displayedItems[i] || null)
 
     const handleDropOnPaperdoll = async (e: React.DragEvent, slotType: ItemType) => {
         e.preventDefault()
         const inventoryId = e.dataTransfer.getData('inventoryId')
         if (!inventoryId) return
-        const itemToEquip = itemsWithDetails.find(i => i.id === inventoryId)
+        const itemToEquip = itemsWithDetails.find(i => i.inventory_id === inventoryId)
         if (!itemToEquip || itemToEquip.type !== slotType) return
         const req = checkItemRequirements(profile, itemToEquip)
         if (!req.meets) return
@@ -156,7 +147,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
         e.preventDefault()
         const inventoryId = e.dataTransfer.getData('inventoryId')
         if (!inventoryId) return
-        const itemToUnequip = itemsWithDetails.find(i => i.id === inventoryId)
+        const itemToUnequip = itemsWithDetails.find(i => i.inventory_id === inventoryId)
         if (!itemToUnequip) return
         if (itemToUnequip.is_equipped) await handleToggleEquip(inventoryId)
         setDraggedItemId(null)
@@ -165,7 +156,8 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
     const handleItemClick = async (item: any, req: any) => {
         if (!item) return
         if (item.type === 'consumable') {
-            const res = await consumeItem(profile.id, item.id, item)
+            // item.inventory_id is now safely the database UUID
+            const res = await consumeItem(profile.id, item.inventory_id, item)
             alert(res.message)
             if (res.success) {
                 loadInventory()
@@ -179,7 +171,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                 setLightboxStats(item.stats)
             } else if (req?.meets) {
                 // Only auto-equip if requirements are met and there's no image to show
-                handleToggleEquip(item.id)
+                handleToggleEquip(item.inventory_id)
             } else if (!req?.meets) {
                 alert(`Você não tem os requisitos necessários para este item: ${req?.reason || ''}`)
             }
@@ -193,7 +185,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
 
         return (
             <div
-                className={`group relative bg-black/40 border-2 transition-all flex items-center justify-center rounded-sm ${className || 'w-20 h-20 md:w-24 md:h-24'}`}
+                className="group relative w-16 h-16 bg-black/40 border-2 transition-all flex items-center justify-center rounded-sm"
                 style={{
                     borderColor: item ? (req?.meets ? rc?.border : '#8b0000') : '#423020',
                     boxShadow: item ? `0 0 10px ${req?.meets ? rc?.glow : 'rgba(139,0,0,0.3)'}` : 'none'
@@ -207,7 +199,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                             setLightboxAlt(item.name)
                             setLightboxStats(item.stats)
                         } else {
-                            handleToggleEquip(item.id)
+                            handleToggleEquip(item.inventory_id)
                         }
                     }
                 }}
@@ -229,7 +221,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                                     {ITEM_TYPE_LABELS[item.type as ItemType]}
                                 </span>
                             </div>
-                            
+
                             {/* Requisitos no hover do equipado */}
                             {item.requirements && !req?.meets && (
                                 <div className="mt-2 mb-2 p-1.5 bg-red-950/30 border border-red-900/50 rounded-sm">
@@ -319,11 +311,11 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
 
                         return (
                             <div
-                                key={item ? item.id : `empty-${i}`}
+                                key={item ? item.inventory_id : `empty-${i}`}
                                 draggable={!!item}
-                                onDragStart={(e) => item && handleDragStart(e, item.id)}
+                                onDragStart={(e) => item && handleDragStart(e, item.inventory_id)}
                                 onClick={() => item && handleItemClick(item, req)}
-                                className="aspect-square bg-black/60 border border-white/5 relative group transition-all hover:border-gold/30 hover:bg-white/5 flex items-center justify-center cursor-pointer"
+                                className="aspect-square bg-black/60 border border-white/5 relative group transition-all hover:border-gold/30 hover:bg-white/5 flex items-center justify-center cursor-pointer hover:z-[100]"
                                 style={{
                                     borderColor: item ? (req?.meets ? rc?.border : '#8b0000') : '',
                                     boxShadow: item ? `inset 0 0 10px ${req?.meets ? rc?.glow : 'rgba(139,0,0,0.2)'}` : ''
@@ -343,7 +335,7 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                                                     {ITEM_TYPE_LABELS[item.type as ItemType]}
                                                 </span>
                                             </div>
-                                            
+
                                             {/* Requisitos no hover da mochila */}
                                             {item.requirements && !req?.meets && (
                                                 <div className="mb-2 p-1.5 bg-red-950/30 border border-red-900/50 rounded-sm">
@@ -421,19 +413,36 @@ export default function InventoryTab({ profile, onRefresh }: InventoryTabProps) 
                 </div>
 
                 <div className="mt-4 flex gap-1 md:gap-2">
-                    {['BAG 1', 'BAG 2'].map((b, i) => (
-                        <div key={b} className={`flex-1 py-1 text-center text-[8px] md:text-[9px] border font-bold uppercase ${i === 0 ? 'border-gold/50 text-gold bg-gold/5' : 'border-white/5 text-gray-700'}`}>
-                            {b}
-                        </div>
-                    ))}
+                    {['BAG 1', 'BAG 2'].map((b, i) => {
+                        const isUnlocked = i === 0 || hasBag2
+                        const isActive = activeBagIndex === i
+
+                        return (
+                            <button
+                                key={b}
+                                disabled={!isUnlocked}
+                                onClick={() => setActiveBagIndex(i)}
+                                className={`flex-1 py-1 text-center text-[8px] md:text-[9px] border font-bold uppercase transition-all ${isActive
+                                        ? 'border-gold/50 text-gold bg-gold/10 shadow-[0_0_8px_rgba(212,175,55,0.2)]'
+                                        : isUnlocked
+                                            ? 'border-white/10 text-gray-400 hover:text-white hover:border-white/30 cursor-pointer'
+                                            : 'border-white/5 text-gray-700 bg-black/50 cursor-not-allowed line-through'
+                                    }`}
+                            >
+                                {b} {!isUnlocked && <span className="text-[6px] ml-1">(Fechado)</span>}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 
             {/* LADO DIREITO: PERSONAGEM & STATUS */}
-            <div className="w-full lg:w-[420px] western-border bg-black/60 p-4 md:p-5 flex flex-col gap-4 md:gap-6 relative overflow-visible order-1 lg:order-2">
+            <div className="w-full lg:w-[420px] western-border bg-black/60 p-4 md:p-5 flex flex-col gap-4 md:gap-6 relative overflow-hidden order-1 lg:order-2">
                 {/* Background Decor */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
-                    <img src="/images/logo-semfundo.png" className="w-[80%] grayscale invert" alt="" />
+                <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-sm">
+                    <div className="absolute inset-0 opacity-5 flex items-center justify-center">
+                        <img src="/images/logo-semfundo.png" className="w-[80%] grayscale invert" alt="" />
+                    </div>
                 </div>
 
                 <h2 className="title-western text-lg md:text-xl text-center text-gold tracking-widest relative z-10">

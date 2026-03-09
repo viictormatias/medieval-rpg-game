@@ -91,24 +91,24 @@ function getEnemyRarityForLevel(level: number): ItemRarity {
 
 function getEnemyEquipment(enemy: Enemy, catalog: Item[]) {
     const fixedGear: Record<string, { weapon?: string, helmet?: string, chest?: string, gloves?: string, legs?: string, boots?: string, shield?: string }> = {
-        'Saqueador Ardil': { 
-            weapon: 'rusty_dagger', chest: 'dusty_poncho', helmet: 'cloth_hat', 
-            gloves: 'leather_gloves', legs: 'traveler_pants', boots: 'cloth_boots' 
+        'Saqueador Ardil': {
+            weapon: 'rusty_dagger', chest: 'dusty_poncho', helmet: 'cloth_hat',
+            gloves: 'leather_gloves', legs: 'traveler_pants', boots: 'cloth_boots'
         },
-        'Bandoleiro Novato': { 
-            weapon: 'short_revolver', chest: 'reinforced_poncho', helmet: 'leather_hat', 
+        'Bandoleiro Novato': {
+            weapon: 'short_revolver', chest: 'reinforced_poncho', helmet: 'leather_hat',
             gloves: 'reinforced_gloves', legs: 'leather_chaps', boots: 'mercenary_boots', shield: 'reinforced_sling'
         },
-        'Caçador Furtivo': { 
-            weapon: 'sawed_off', chest: 'steel_lined_coat', helmet: 'bandit_mask', 
+        'Caçador Furtivo': {
+            weapon: 'sawed_off', chest: 'steel_lined_coat', helmet: 'bandit_mask',
             gloves: 'duelist_gloves', legs: 'lined_pants', boots: 'iron_boots', shield: 'reinforced_bandolier'
         },
-        'Atirador de Elite': { 
-            weapon: 'precision_rifle', chest: 'marshal_trenchcoat', helmet: 'trigger_king_hat', 
+        'Atirador de Elite': {
+            weapon: 'precision_rifle', chest: 'marshal_trenchcoat', helmet: 'trigger_king_hat',
             gloves: 'marshal_gloves', legs: 'sheriff_greaves', boots: 'ranger_boots', shield: 'sheriff_arm_shield'
         },
-        'Chefe Rufião': { 
-            weapon: 'duelist_revolver', chest: 'sheriff_coat', helmet: 'sheriff_hat', 
+        'Chefe Rufião': {
+            weapon: 'duelist_revolver', chest: 'sheriff_coat', helmet: 'sheriff_hat',
             gloves: 'nightfang_grips', legs: 'ghost_step_pants', boots: 'raven_boots', shield: 'iron_star_buckler'
         },
     }
@@ -131,21 +131,21 @@ function getEnemyEquipment(enemy: Enemy, catalog: Item[]) {
     // Default fallback based on level for missing gearMap
     const lvl = enemy.level;
     let w = 'rusty_dagger', c = 'dusty_poncho', h = 'cloth_hat', g = 'leather_gloves', l = 'traveler_pants', b = 'cloth_boots', s = 'simple_bandolier';
-    
-    if (lvl >= 4) { 
-        w = 'short_revolver'; c = 'reinforced_poncho'; h = 'leather_hat'; 
+
+    if (lvl >= 4) {
+        w = 'short_revolver'; c = 'reinforced_poncho'; h = 'leather_hat';
         g = 'reinforced_gloves'; l = 'leather_chaps'; b = 'mercenary_boots'; s = 'reinforced_sling';
     }
-    if (lvl >= 8) { 
-        w = 'sawed_off'; c = 'steel_lined_coat'; h = 'bandit_mask'; 
+    if (lvl >= 8) {
+        w = 'sawed_off'; c = 'steel_lined_coat'; h = 'bandit_mask';
         g = 'duelist_gloves'; l = 'lined_pants'; b = 'iron_boots'; s = 'reinforced_bandolier';
     }
-    if (lvl >= 12) { 
-        w = 'duelist_revolver'; c = 'marshal_trenchcoat'; h = 'trigger_king_hat'; 
+    if (lvl >= 12) {
+        w = 'duelist_revolver'; c = 'marshal_trenchcoat'; h = 'trigger_king_hat';
         g = 'marshal_gloves'; l = 'sheriff_greaves'; b = 'ranger_boots'; s = 'sheriff_arm_shield';
     }
     if (lvl >= 15) {
-        w = 'precision_rifle'; c = 'sheriff_coat'; h = 'trigger_king_hat'; 
+        w = 'precision_rifle'; c = 'sheriff_coat'; h = 'trigger_king_hat';
         g = 'nightfang_grips'; l = 'ghost_step_pants'; b = 'raven_boots'; s = 'iron_star_buckler';
     }
 
@@ -180,15 +180,15 @@ function ItemIcon({ item, className = "" }: { item: Item; className?: string }) 
 
     if (displayUrl && !imgError) {
         return (
-            <img 
-                src={displayUrl} 
-                alt={item.name} 
+            <img
+                src={displayUrl}
+                alt={item.name}
                 className={`w-full h-full object-cover ${className}`}
                 onError={() => setImgError(true)}
             />
         )
     }
-    
+
     return <span className="text-sm leading-none">{item.icon}</span>
 }
 
@@ -222,6 +222,9 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         enemy: Enemy;
     } | null>(null);
 
+    const [shouldSkipCombat, setShouldSkipCombat] = useState(false);
+    const skipCombatRef = useRef(false);
+
     useEffect(() => {
         if (logEndRef.current) {
             logEndRef.current.scrollTop = logEndRef.current.scrollHeight;
@@ -235,7 +238,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
             .map((inv: any) => CATALOG_ITEMS.find(it => it.id === inv.item_id))
             .filter(Boolean) as Item[]
         setSoulsSnapshot(deriveSoulsStats(profile, equippedItems as any))
-        
+
         setPlayerEquipment({
             weapon: equippedItems.find(i => i.type === 'weapon') || null,
             armor: equippedItems.filter(i => i.type !== 'weapon' && i.type !== 'consumable')
@@ -279,6 +282,8 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         }
         setIsFighting(true)
         setShowCollectButton(false)
+        setShouldSkipCombat(false)
+        skipCombatRef.current = false;
         setCombatLog([])
         setWinner(null)
         setCombatSummary(null)
@@ -338,20 +343,34 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                 finalPlayerHpVal = turn.resultHp
             }
         }
-
         for (const turn of result.history) {
-            await new Promise(resolve => setTimeout(resolve, 3200))
+            // Wait logic that can be interrupted
+            const sleepMs = 3200;
+            const pollInterval = 100;
+            let waited = 0;
+
+            while (waited < sleepMs && !skipCombatRef.current) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                waited += pollInterval;
+            }
 
             const attackerName = turn.attacker.toLowerCase()
             const playerName = profile.username.toLowerCase()
 
             if (turn.damage > 0) {
                 if (attackerName === playerName) {
-                    setEnemyHp(turn.resultHp)
-                    triggerShake('enemy', turn.isCritical)
+                    if (!skipCombatRef.current) triggerShake('enemy', turn.isCritical);
                 } else {
-                    setPlayerHp(turn.resultHp)
-                    triggerShake('player', turn.isCritical)
+                    if (!skipCombatRef.current) triggerShake('player', turn.isCritical);
+                }
+            }
+
+            // if skipped, we don't bother triggering shake, we just update the logs and HPs
+            if (turn.damage > 0) {
+                if (attackerName === playerName) {
+                    setEnemyHp(turn.resultHp);
+                } else {
+                    setPlayerHp(turn.resultHp);
                 }
             }
 
@@ -454,7 +473,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
     const playerMaxHp = profile.hp_max + (soulsSnapshot?.hpBonus || 0)
     const enemyVigorBonus = (enemyEquipment?.armor || []).reduce((sum, item) => sum + (item.stats?.vigor || 0), 0)
     const enemyHpMax = (enemyBase?.hp_max || selectedEnemy?.hp_max || 1) + enemyVigorBonus
-    
+
     const playerIsWinner = winner?.toLowerCase() === profile.username.toLowerCase()
 
     const playerHpPct = Math.max(0, (playerHp / playerMaxHp) * 100)
@@ -487,18 +506,18 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
     }
 
     return (
-        <div className="relative flex flex-col gap-3 lg:h-[min(800px,calc(100vh-140px))] p-3 md:p-4 rounded-sm overflow-hidden" 
-             style={{ 
-                 backgroundImage: `linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('/images/duelo1.jpeg')`,
-                 backgroundSize: 'cover',
-                 backgroundPosition: 'center',
-                 backgroundAttachment: 'fixed'
-             }}>
+        <div className="relative flex flex-col gap-3 lg:h-[min(800px,calc(100vh-140px))] p-3 md:p-4 rounded-sm overflow-hidden"
+            style={{
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('/images/duelo1.jpeg')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed'
+            }}>
             {/* Combat status is now moved into the central column */}
 
             {/* THREE COLUMN LAYOUT ON DESKTOP */}
             <div className="flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-4 h-full min-h-0">
-                
+
                 {/* 1. PLAYER COLUMN */}
                 <div className="lg:col-span-4 flex flex-col gap-3">
                     <div className="bg-[#140d07]/90 border-2 border-[#3a2a1a] rounded-sm p-3 shadow-inner flex flex-col items-center h-full auto-rows-min">
@@ -540,185 +559,174 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                             ))}
                         </div>
 
-                        {/* Player Equipment Grid */}
-                        <div className="flex flex-wrap gap-1.5 mt-auto pt-3 items-center justify-center">
-                            {(() => {
-                                const allItems = [playerEquipment.weapon, ...playerEquipment.armor].filter(Boolean) as Item[];
-                                if (allItems.length === 0) return <span className="text-[10px] text-gray-600 italic">Sem equipamento</span>;
-                                return allItems.map((item, idx) => (
-                                    <div key={idx}
-                                        className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group"
-                                        style={{
-                                            borderColor: RARITY_COLORS[item.rarity || 'common'].border,
-                                            boxShadow: `0 0 6px ${RARITY_COLORS[item.rarity || 'common'].glow}`
-                                        }}
-                                        title={item.name}
-                                    >
-                                        <ItemIcon item={item} />
-                                    </div>
-                                ));
-                            })()}
+                        {/* VS Overlay */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
+                            <div className="text-3xl md:text-4xl lg:text-5xl font-black text-[#a52a2a] italic tracking-tighter drop-shadow-2xl animate-pulse">VS</div>
+                            {isFighting && (
+                                <div className="text-[8px] md:text-[9px] text-gold font-bold uppercase tracking-[0.2em] mt-1">
+                                    Trocando Tiros
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                {/* 2. CENTER COLUMN: CONTROLS & LOG */}
-                <div className="lg:col-span-4 flex flex-col gap-2 min-h-0 h-full">
-                    {/* Integrated Combat Status */}
-                    {isFighting && (
-                        <div className="text-center py-1 animate-in fade-in slide-in-from-top-2">
-                            <div className="text-xl font-black text-[#a52a2a] italic tracking-tighter drop-shadow-lg animate-pulse">EM COMBATE</div>
-                            <div className="text-[10px] text-gold font-bold uppercase tracking-[0.1em] opacity-80">
-                                Sorte a favor do gatilho
+                    {/* 2. CENTER COLUMN: CONTROLS & LOG */}
+                    <div className="lg:col-span-4 flex flex-col gap-2 min-h-0 h-full">
+                        {/* Integrated Combat Status */}
+                        {isFighting && (
+                            <div className="text-center py-1 animate-in fade-in slide-in-from-top-2">
+                                <div className="text-xl font-black text-[#a52a2a] italic tracking-tighter drop-shadow-lg animate-pulse">EM COMBATE</div>
+                                <div className="text-[10px] text-gold font-bold uppercase tracking-[0.1em] opacity-80">
+                                    Sorte a favor do gatilho
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Controls */}
+                        <div className="bg-[#140d07] border border-[#3a2a1a] p-3 rounded-sm shadow-md flex flex-col gap-3 h-fit flex-shrink-0">
+                            <select
+                                className="w-full bg-[#111] border-2 border-[#3a3a3a] text-white p-2 outline-none focus:border-red-600 transition-colors rounded-sm western-select text-sm font-black"
+                                onChange={(e) => handleEnemyChange(e.target.value)}
+                                disabled={isFighting || showCollectButton}
+                                value={selectedEnemy?.id || ''}
+                            >
+                                <option value="">-- SELECIONAR ALVO --</option>
+                                {enemies.map(en => (
+                                    <option key={en.id} value={en.id}>{en.name} (Nvl {en.level})</option>
+                                ))}
+                            </select>
+
+                            {!showCollectButton ? (
+                                <button
+                                    onClick={handleFight}
+                                    disabled={isFighting || !selectedEnemy || profile.energy < COMBAT_ENERGY_COST}
+                                    className="btn-western py-4 px-8 text-base font-black min-w-[200px]"
+                                >
+                                    {isFighting ? '🔫 DUELANDO...' : '⚔️ INICIAR DUELO'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleCollectReward}
+                                    disabled={isResolving}
+                                    className="py-4 px-10 text-base font-black uppercase tracking-[0.1em] bg-gold text-black border-2 border-black hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(212,175,55,0.5)] animate-bounce min-w-[240px]"
+                                >
+                                    {isResolving ? 'COLETANDO...' : '💰 COLETAR RECOMPENSA'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Combat Summary */}
+                        {combatSummary && (
+                            <div className="flex flex-col gap-1 p-3 bg-[#111] border border-gold/40 rounded-sm text-xs shadow-inner animate-in fade-in flex-shrink-0">
+                                <span className="text-gold font-black uppercase tracking-[0.2em] mb-1">Espólios:</span>
+                                <span className="text-green-400">+{combatSummary.xpGain} XP</span>
+                                <span className="text-yellow-400">+{combatSummary.goldGain} Ouro</span>
+                                {combatSummary.consumableDrop && <span className="text-purple-400 mt-1">📦 {combatSummary.consumableDrop.name}</span>}
+                                {combatSummary.equipmentDrop && (
+                                    <span style={{ color: RARITY_COLORS[combatSummary.equipmentDrop.rarity]?.textColor }} className="font-bold border-l-2 border-white/20 pl-2 mt-1">
+                                        ⚔️ {combatSummary.equipmentDrop.name}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Combat Log */}
+                        <div className="western-border bg-black/60 rounded-sm overflow-hidden flex flex-col min-h-[200px] flex-1">
+                            <div className="flex items-center justify-between px-2 py-1 border-b border-[#2a2a2a] bg-black/40">
+                                <span className="text-[9px] font-black text-gold uppercase tracking-[0.2em]">Crônica</span>
+                            </div>
+                            <div ref={logEndRef} className="flex-1 overflow-y-auto p-2 font-serif text-[12px] space-y-1.5">
+                                {combatLog.length === 0 && !winner && (
+                                    <div className="text-gray-600 text-center italic mt-8 text-[10px] tracking-widest uppercase opacity-40">Aguardando duelistas...</div>
+                                )}
+                                {combatLog.map((log, i) => (
+                                    <div key={i} className={`flex items-start gap-2 px-2 py-1.5 rounded-sm border-l-2 ${log.isCritical ? 'border-red-600 bg-red-950/20' : 'border-transparent'}`} style={getLogStyle(log)}>
+                                        <span className="flex-1 leading-relaxed">{log.narrative}</span>
+                                        {log.damage > 0 && <span className="text-[10px] font-black min-w-[25px] text-right">-{log.damage}</span>}
+                                    </div>
+                                ))}
+                                {winner && (
+                                    <div className={`mt-3 p-2 text-center rounded-sm border-2 animate-in fade-in zoom-in duration-500 ${playerIsWinner ? 'bg-gold/10 border-gold/30' : 'bg-red-900/10 border-red-900/30'}`}>
+                                        <div className={`text-sm font-black uppercase tracking-[0.1em] ${playerIsWinner ? 'text-gold' : 'text-red-500'}`}>
+                                            {playerIsWinner ? 'Vitória!' : 'Derrota!'}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    )}
-                    
-                    {/* Controls */}
-                    <div className="bg-[#140d07] border border-[#3a2a1a] p-3 rounded-sm shadow-md flex flex-col gap-3 h-fit flex-shrink-0">
-                        <select
-                            className="w-full bg-[#111] border-2 border-[#3a3a3a] text-white p-2 outline-none focus:border-red-600 transition-colors rounded-sm western-select text-sm font-black"
-                            onChange={(e) => handleEnemyChange(e.target.value)}
-                            disabled={isFighting || showCollectButton}
-                            value={selectedEnemy?.id || ''}
-                        >
-                            <option value="">-- SELECIONAR ALVO --</option>
-                            {enemies.map(en => (
-                                <option key={en.id} value={en.id}>{en.name} (Nvl {en.level})</option>
-                            ))}
-                        </select>
+                    </div>
 
-                        {!showCollectButton ? (
-                            <button
-                                onClick={handleFight}
-                                disabled={isFighting || !selectedEnemy || profile.energy < COMBAT_ENERGY_COST}
-                                className="btn-western py-3 w-full text-sm font-black"
-                            >
-                                {isFighting ? '🔫 DUELANDO...' : '⚔️ INICIAR DUELO'}
-                            </button>
+                    {/* 3. ENEMY COLUMN */}
+                    <div className="lg:col-span-4 flex flex-col gap-3">
+                        {selectedEnemy ? (
+                            <div className="bg-[#140d07]/90 border-2 border-[#3a2a1a] rounded-sm p-3 shadow-inner flex flex-col items-center h-full auto-rows-min">
+                                <div className="flex justify-between w-full mb-2 items-center flex-row-reverse">
+                                    <span className="text-xs font-black text-red-500 uppercase tracking-widest">{selectedEnemy.name}</span>
+                                    <span className="text-[10px] text-red-300/50 font-mono">HP {enemyHp}/{enemyHpMax}</span>
+                                </div>
+                                <div className="w-full h-2 mb-4 bg-black/60 border border-red-900/30 rounded-full overflow-hidden shrink-0">
+                                    <div className="h-full bg-gradient-to-l from-red-700 to-red-500 transition-all duration-500" style={{ width: `${enemyHpPct}%`, marginLeft: 'auto' }} />
+                                </div>
+
+                                <CharacterPortrait
+                                    src={null}
+                                    fallbackEmoji="💀"
+                                    borderColor="red"
+                                    size="sm"
+                                    isHit={enemyHit}
+                                />
+                                {/* Enemy Stats (TOTAL = BASE + BÔNUS) */}
+                                <div className="grid grid-cols-5 gap-1 mt-auto pt-3 border-t border-[#3a2a1a] w-full">
+                                    {[
+                                        { label: 'FOR', base: enemyBase?.strength ?? selectedEnemy.strength, bonus: enemyBonusStrength },
+                                        { label: 'DEF', base: enemyBase?.defense ?? 0, bonus: enemyBonusDefense },
+                                        { label: 'AGI', base: enemyBase?.agility ?? selectedEnemy.agility, bonus: enemyBonusAgility },
+                                        { label: 'PON', base: enemyBase?.accuracy ?? selectedEnemy.precision, bonus: enemyBonusAccuracy },
+                                        { label: 'VIG', base: enemyBase?.vigor ?? 0, bonus: enemyBonusVigor },
+                                    ].map(({ label, base, bonus }) => (
+                                        <div key={label} className="flex flex-col items-center">
+                                            <span className="text-[10px] text-[#8a7a6a] font-bold uppercase tracking-wider">{label}</span>
+                                            <div className="flex flex-col items-center leading-tight">
+                                                <span className="text-sm font-black text-white">{base + bonus}</span>
+                                                <div className="flex flex-col items-center text-[9px] text-gray-500 font-bold leading-none">
+                                                    <span>({base})</span>
+                                                    {bonus > 0 ? <span>(+{bonus})</span> : null}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Enemy Equipment Grid */}
+                                <div className="flex flex-wrap gap-1.5 mt-auto pt-3 items-center justify-center">
+                                    {(() => {
+                                        const allItems = [enemyEquipment?.weapon, ...(enemyEquipment?.armor || [])].filter(Boolean) as Item[];
+                                        if (allItems.length === 0) return <span className="text-[10px] text-gray-600 italic">Sem equipamento</span>;
+                                        return allItems.map((item, idx) => (
+                                            <div key={idx}
+                                                className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group"
+                                                style={{
+                                                    borderColor: RARITY_COLORS[item.rarity || 'common'].border,
+                                                    boxShadow: `0 0 6px ${RARITY_COLORS[item.rarity || 'common'].glow}`
+                                                }}
+                                                title={item.name}
+                                            >
+                                                <ItemIcon item={item} />
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
                         ) : (
-                            <button
-                                onClick={handleCollectReward}
-                                disabled={isResolving}
-                                className="py-3 w-full text-sm font-black uppercase tracking-[0.1em] bg-gold text-black border-2 border-black hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(212,175,55,0.5)] animate-pulse"
-                            >
-                                {isResolving ? 'COLETANDO...' : '💰 COLETAR'}
-                            </button>
+                            <div className="h-full border-2 border-dashed border-[#3a2a1a] rounded-sm flex flex-col items-center justify-center opacity-30 gap-2 p-6">
+                                <span className="text-4xl">🌵</span>
+                                <span className="font-serif tracking-widest text-[#3a2a1a] uppercase text-sm font-black">Nenhum Alvo</span>
+                            </div>
                         )}
                     </div>
 
-                    {/* Combat Summary */}
-                    {combatSummary && (
-                        <div className="flex flex-col gap-1 p-3 bg-[#111] border border-gold/40 rounded-sm text-xs shadow-inner animate-in fade-in flex-shrink-0">
-                            <span className="text-gold font-black uppercase tracking-[0.2em] mb-1">Espólios:</span>
-                            <span className="text-green-400">+{combatSummary.xpGain} XP</span>
-                            <span className="text-yellow-400">+{combatSummary.goldGain} Ouro</span>
-                            {combatSummary.consumableDrop && <span className="text-purple-400 mt-1">📦 {combatSummary.consumableDrop.name}</span>}
-                            {combatSummary.equipmentDrop && (
-                                <span style={{ color: RARITY_COLORS[combatSummary.equipmentDrop.rarity]?.textColor }} className="font-bold border-l-2 border-white/20 pl-2 mt-1">
-                                    ⚔️ {combatSummary.equipmentDrop.name}
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Combat Log */}
-                    <div className="western-border bg-black/60 rounded-sm overflow-hidden flex flex-col min-h-[200px] flex-1">
-                        <div className="flex items-center justify-between px-2 py-1 border-b border-[#2a2a2a] bg-black/40">
-                            <span className="text-[9px] font-black text-gold uppercase tracking-[0.2em]">Crônica</span>
-                        </div>
-                        <div ref={logEndRef} className="flex-1 overflow-y-auto p-2 font-serif text-[12px] space-y-1.5">
-                            {combatLog.length === 0 && !winner && (
-                                <div className="text-gray-600 text-center italic mt-8 text-[10px] tracking-widest uppercase opacity-40">Aguardando duelistas...</div>
-                            )}
-                            {combatLog.map((log, i) => (
-                                <div key={i} className={`flex items-start gap-2 px-2 py-1.5 rounded-sm border-l-2 ${log.isCritical ? 'border-red-600 bg-red-950/20' : 'border-transparent'}`} style={getLogStyle(log)}>
-                                    <span className="flex-1 leading-relaxed">{log.narrative}</span>
-                                    {log.damage > 0 && <span className="text-[10px] font-black min-w-[25px] text-right">-{log.damage}</span>}
-                                </div>
-                            ))}
-                            {winner && (
-                                <div className={`mt-3 p-2 text-center rounded-sm border-2 animate-in fade-in zoom-in duration-500 ${playerIsWinner ? 'bg-gold/10 border-gold/30' : 'bg-red-900/10 border-red-900/30'}`}>
-                                    <div className={`text-sm font-black uppercase tracking-[0.1em] ${playerIsWinner ? 'text-gold' : 'text-red-500'}`}>
-                                        {playerIsWinner ? 'Vitória!' : 'Derrota!'}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
-
-                {/* 3. ENEMY COLUMN */}
-                <div className="lg:col-span-4 flex flex-col gap-3">
-                    {selectedEnemy ? (
-                        <div className="bg-[#140d07]/90 border-2 border-[#3a2a1a] rounded-sm p-3 shadow-inner flex flex-col items-center h-full auto-rows-min">
-                            <div className="flex justify-between w-full mb-2 items-center flex-row-reverse">
-                                <span className="text-xs font-black text-red-500 uppercase tracking-widest">{selectedEnemy.name}</span>
-                                <span className="text-[10px] text-red-300/50 font-mono">HP {enemyHp}/{enemyHpMax}</span>
-                            </div>
-                            <div className="w-full h-2 mb-4 bg-black/60 border border-red-900/30 rounded-full overflow-hidden shrink-0">
-                                <div className="h-full bg-gradient-to-l from-red-700 to-red-500 transition-all duration-500" style={{ width: `${enemyHpPct}%`, marginLeft: 'auto' }} />
-                            </div>
-
-                            <CharacterPortrait
-                                src={null}
-                                fallbackEmoji="💀"
-                                borderColor="red"
-                                size="sm"
-                                isHit={enemyHit}
-                            />
-                            {/* Enemy Stats (TOTAL = BASE + BÔNUS) */}
-                             <div className="grid grid-cols-5 gap-1 mt-auto pt-3 border-t border-[#3a2a1a] w-full">
-                                {[
-                                    { label: 'FOR', base: enemyBase?.strength ?? selectedEnemy.strength, bonus: enemyBonusStrength },
-                                    { label: 'DEF', base: enemyBase?.defense ?? 0, bonus: enemyBonusDefense },
-                                    { label: 'AGI', base: enemyBase?.agility ?? selectedEnemy.agility, bonus: enemyBonusAgility },
-                                    { label: 'PON', base: enemyBase?.accuracy ?? selectedEnemy.precision, bonus: enemyBonusAccuracy },
-                                    { label: 'VIG', base: enemyBase?.vigor ?? 0, bonus: enemyBonusVigor },
-                                ].map(({ label, base, bonus }) => (
-                                    <div key={label} className="flex flex-col items-center">
-                                        <span className="text-[10px] text-[#8a7a6a] font-bold uppercase tracking-wider">{label}</span>
-                                        <div className="flex flex-col items-center leading-tight">
-                                            <span className="text-sm font-black text-white">{base + bonus}</span>
-                                            <div className="flex flex-col items-center text-[9px] text-gray-500 font-bold leading-none">
-                                                <span>({base})</span>
-                                                {bonus > 0 ? <span>(+{bonus})</span> : null}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Enemy Equipment Grid */}
-                            <div className="flex flex-wrap gap-1.5 mt-auto pt-3 items-center justify-center">
-                                {(() => {
-                                    const allItems = [enemyEquipment?.weapon, ...(enemyEquipment?.armor || [])].filter(Boolean) as Item[];
-                                    if (allItems.length === 0) return <span className="text-[10px] text-gray-600 italic">Sem equipamento</span>;
-                                    return allItems.map((item, idx) => (
-                                        <div key={idx}
-                                            className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group"
-                                            style={{
-                                                borderColor: RARITY_COLORS[item.rarity || 'common'].border,
-                                                boxShadow: `0 0 6px ${RARITY_COLORS[item.rarity || 'common'].glow}`
-                                            }}
-                                            title={item.name}
-                                        >
-                                            <ItemIcon item={item} />
-                                        </div>
-                                    ));
-                                })()}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="h-full border-2 border-dashed border-[#3a2a1a] rounded-sm flex flex-col items-center justify-center opacity-30 gap-2 p-6">
-                            <span className="text-4xl">🌵</span>
-                            <span className="font-serif tracking-widest text-[#3a2a1a] uppercase text-sm font-black">Nenhum Alvo</span>
-                        </div>
-                    )}
-                </div>
-
             </div>
-        </div>
-    )
+            )
 }
 
