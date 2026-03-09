@@ -44,7 +44,7 @@ const CLASSES = [
         age: 58,
         emoji: '👮',
         imageSrc: '/images/xerife.jpeg',
-        description: 'Linha de frente resistente. Segura o duelo sob pressao.',
+        description: 'Linha de frente resistente. Segura o duelo sob pressão.',
         flavor: 'A estrela no peito pesa tanto quanto o ferro no coldre. A lei é a única coisa que separa este mundo do abismo.',
         base: { hp: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3 },
         color: '#3b82f6'
@@ -56,7 +56,7 @@ const CLASSES = [
         age: 24,
         emoji: '🔫',
         imageSrc: '/images/pistoleiro.jpeg',
-        description: 'Especialista em agilidade e precisao no saque.',
+        description: 'Especialista em agilidade e precisão no saque.',
         flavor: 'Rapidez não é escolha, é sobrevivência. Antes que a poeira baixe, o Kid já terá guardado a arma.',
         base: { hp: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1 },
         color: '#f2b90d'
@@ -68,7 +68,7 @@ const CLASSES = [
         age: 31,
         emoji: '🌵',
         imageSrc: '/images/forasteiro.jpeg',
-        description: 'Versatil e perigoso, pronto para qualquer contrato.',
+        description: 'Versátil e perigoso, pronto para qualquer contrato.',
         flavor: 'Ninguém sabe de onde veio, e ninguém viverá para saber para onde vai. Ele é o rastro que o vento apaga.',
         base: { hp: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2 },
         color: '#ef4444'
@@ -80,7 +80,7 @@ const CLASSES = [
         age: 62,
         emoji: '📖',
         imageSrc: '/images/pregador.jpeg',
-        description: 'Sancao divina e resistencia espiritual.',
+        description: 'Sanção divina e resistência espiritual.',
         flavor: 'Em uma mão a Bíblia, na outra o julgamento. Ele busca salvar almas, mas não se importa em enterrar corpos.',
         base: { hp: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3 },
         color: '#a855f7'
@@ -111,12 +111,12 @@ const CLASSES = [
     },
     {
         id: 'CacadorDeRecompensas' as ClassType,
-        name: 'Cacador de Recompensas',
+        name: 'Caçador de Recompensas',
         suggestedName: 'Elias Thorne',
         age: 45,
         emoji: '🎯',
         imageSrc: '/images/cacador-de-recompensas.jpeg',
-        description: 'Rastreador implacavel e precision fatal.',
+        description: 'Rastreador implacável e precisão fatal.',
         flavor: 'Para ele, homens são apenas números em um papel de \'Procurado\'. Ele nunca erra o rastro, e nunca volta de mãos vazias.',
         base: { hp: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1 },
         color: '#f97316'
@@ -215,7 +215,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
         if (success) onCreated()
         else {
             setIsCreating(false)
-            alert('Erro ao criar personagem. Verifique nome e distribuicao.')
+            alert('Erro ao criar personagem. Verifique nome e distribuição.')
         }
     }
 

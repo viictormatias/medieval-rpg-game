@@ -1,10 +1,5 @@
 import { supabase } from './supabase'
-import { Item, ITEMS, ItemRarity } from './items'
-
-const MAX_ENERGY = 100
-const ENERGY_REGEN_PER_TICK = 10
-// 10 ticks to fill 0->100. 360s per tick = 3600s (1 hour) total.
-const ENERGY_REGEN_INTERVAL_SECONDS = 360
+import { Item, ItemRarity } from './items'
 
 export interface Profile {
     id: string
@@ -26,6 +21,7 @@ export interface Profile {
     class: string
     image_url: string | null
     energy_last_regen_at?: string | null
+    last_regen_at?: string | null
     created_at?: string | null
 }
 
@@ -68,6 +64,50 @@ export type InitialStatAllocation = Partial<Record<InitialStatKey, number>>
 export const ONBOARDING_STAT_POINTS = 5
 export const ONBOARDING_MAX_PER_STAT = 8
 export const COMBAT_ENERGY_COST = 0
+const MAX_ENERGY = 100
+const ENERGY_REGEN_PER_TICK = 10
+const ENERGY_REGEN_INTERVAL_SECONDS = 360
+const HP_REGEN_INTERVAL_SECONDS = 30
+const HP_REGEN_FULL_HEAL_SECONDS = 600
+
+type SecureActionResponse<T = any> = {
+    success: boolean
+    data?: T
+    error?: string
+}
+
+async function callSecureAction<T = any>(action: string, payload: Record<string, any> = {}): Promise<SecureActionResponse<T>> {
+    try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+
+        if (!token) {
+            return { success: false, error: 'Sessão expirada. Faça login novamente.' }
+        }
+
+        const res = await fetch('/api/game/action', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ action, payload })
+        })
+
+        const json = await res.json().catch(() => null)
+        if (!res.ok) {
+            return { success: false, error: json?.error || 'Falha na ação segura do servidor.' }
+        }
+
+        if (!json || json.success !== true) {
+            return { success: false, error: json?.error || 'Ação rejeitada pelo servidor.' }
+        }
+
+        return { success: true, data: json.data as T }
+    } catch (error: any) {
+        return { success: false, error: error?.message || 'Erro de conexão com o servidor.' }
+    }
+}
 
 function parseTimestampMs(value?: string | null): number | null {
     if (!value) return null
@@ -75,59 +115,51 @@ function parseTimestampMs(value?: string | null): number | null {
     return Number.isFinite(parsed) ? parsed : null
 }
 
-async function syncVitals(
-    profile: Profile
-): Promise<Profile> {
+function previewSyncedVitals(profile: Profile): Profile {
     try {
         const nowMs = Date.now()
-        let lastRegenAt = profile.energy_last_regen_at
-            ? new Date(profile.energy_last_regen_at).getTime()
-            : new Date(profile.created_at || nowMs).getTime()
+        let energyAnchorMs = parseTimestampMs(profile.energy_last_regen_at) ?? parseTimestampMs(profile.created_at) ?? nowMs
+        let hpAnchorMs = parseTimestampMs(profile.last_regen_at) ?? energyAnchorMs
 
-        // Fallback para datas inválidas (NaN)
-        if (isNaN(lastRegenAt)) {
-            lastRegenAt = nowMs
+        if (!Number.isFinite(energyAnchorMs)) energyAnchorMs = nowMs
+        if (!Number.isFinite(hpAnchorMs)) hpAnchorMs = nowMs
+
+        if (energyAnchorMs > nowMs) energyAnchorMs = nowMs
+        if (hpAnchorMs > nowMs) hpAnchorMs = nowMs
+
+        const energyDiffInSeconds = Math.floor((nowMs - energyAnchorMs) / 1000)
+        const energyTicks = Math.floor(energyDiffInSeconds / ENERGY_REGEN_INTERVAL_SECONDS)
+        const nextEnergy = Math.min(MAX_ENERGY, Number(profile.energy || 0) + energyTicks * ENERGY_REGEN_PER_TICK)
+        const nextEnergyAnchorMs = energyTicks > 0
+            ? energyAnchorMs + energyTicks * ENERGY_REGEN_INTERVAL_SECONDS * 1000
+            : energyAnchorMs
+
+        const hpDiffInSeconds = Math.floor((nowMs - hpAnchorMs) / 1000)
+        const hpTicks = Math.floor(hpDiffInSeconds / HP_REGEN_INTERVAL_SECONDS)
+        const hpElapsedSeconds = hpTicks * HP_REGEN_INTERVAL_SECONDS
+        const hpPerSecond = Number(profile.hp_max || 100) / HP_REGEN_FULL_HEAL_SECONDS
+
+        let nextHp = Number(profile.hp_current || 1)
+        let nextHpAnchorMs = hpAnchorMs
+
+        if (hpTicks > 0) {
+            if (Number(profile.hp_current || 0) >= Number(profile.hp_max || 1)) {
+                nextHpAnchorMs = nowMs
+            } else {
+                const hpGain = Math.max(0, Math.floor(hpPerSecond * hpElapsedSeconds))
+                nextHp = Math.min(Number(profile.hp_max || 1), Number(profile.hp_current || 1) + hpGain)
+                nextHpAnchorMs = hpAnchorMs + hpElapsedSeconds * 1000
+            }
         }
 
-        const diffInSeconds = Math.floor((nowMs - lastRegenAt) / 1000)
-
-        // Intervalo de tick para cálculo base (30 segundos para energia, e vamos usar continuo real para HP)
-        if (diffInSeconds < ENERGY_REGEN_INTERVAL_SECONDS) return profile
-
-        const ticks = Math.floor(diffInSeconds / ENERGY_REGEN_INTERVAL_SECONDS)
-
-        // Calcula Energia
-        const nextEnergy = Math.min(MAX_ENERGY, profile.energy + (ticks * ENERGY_REGEN_PER_TICK))
-
-        // Calcula HP (Total heal in 10 minutes = 600 segundos)
-        const passedSeconds = diffInSeconds
-        const maxHp = profile.hp_max
-        const hpPerSecond = maxHp / 600
-        const nextHp = Math.min(maxHp, Math.floor(profile.hp_current + (hpPerSecond * passedSeconds)))
-
-        const nextRegenAtIso = new Date(
-            lastRegenAt + (ticks * ENERGY_REGEN_INTERVAL_SECONDS * 1000)
-        ).toISOString()
-
-        const { data: updatedProfile, error } = await supabase
-            .from('profiles')
-            .update({
-                energy: nextEnergy,
-                hp_current: nextHp,
-                energy_last_regen_at: nextRegenAtIso
-            })
-            .eq('id', profile.id)
-            .select('*')
-            .single()
-
-        if (error || !updatedProfile) {
-            console.error('Erro ao regenerar vitais:', error)
-            return { ...profile, energy: nextEnergy, hp_current: nextHp }
+        return {
+            ...profile,
+            energy: nextEnergy,
+            hp_current: nextHp,
+            energy_last_regen_at: new Date(nextEnergyAnchorMs).toISOString(),
+            last_regen_at: new Date(nextHpAnchorMs).toISOString(),
         }
-
-        return updatedProfile
-    } catch (err) {
-        console.error('Falha crítica em syncVitals:', err)
+    } catch {
         return profile
     }
 }
@@ -172,7 +204,13 @@ export async function ensureProfile(): Promise<Profile | null> {
         level: profile.level,
         id: profile.id
     });
-    return await syncVitals(profile)
+    const secureSync = await callSecureAction<Profile>('sync_vitals')
+    if (secureSync.success && secureSync.data) {
+        return secureSync.data
+    }
+
+    // Fallback local sem escrita no banco: mantém regen visual mesmo sem SERVICE_ROLE no servidor.
+    return previewSyncedVitals(profile)
 }
 
 export async function createCharacter(
@@ -181,84 +219,20 @@ export async function createCharacter(
     classType: ClassType,
     allocation: InitialStatAllocation = {}
 ): Promise<Profile | null> {
-    const classStats = {
-        Pistoleiro: { hp_max: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1, gold: 100 },
-        Xerife: { hp_max: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3, gold: 100 },
-        Forasteiro: { hp_max: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2, gold: 100 },
-        Pregador: { hp_max: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3, gold: 100 },
-        Nativo: { hp_max: 100, strength: 3, defense: 1, agility: 3, accuracy: 2, vigor: 1, gold: 100 },
-        Vendedor: { hp_max: 100, strength: 1, defense: 1, agility: 3, accuracy: 3, vigor: 2, gold: 100 },
-        CacadorDeRecompensas: { hp_max: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1, gold: 100 }
-    }[classType]
+    if (!userId) return null
 
-    const keys: InitialStatKey[] = ['strength', 'defense', 'agility', 'accuracy', 'vigor']
-    const normalizedAllocation: Record<InitialStatKey, number> = {
-        strength: 0,
-        defense: 0,
-        agility: 0,
-        accuracy: 0,
-        vigor: 0
-    }
+    const result = await callSecureAction<Profile>('create_character', {
+        username,
+        classType,
+        allocation
+    })
 
-    for (const key of keys) {
-        const raw = Number(allocation[key] || 0)
-        if (!Number.isInteger(raw) || raw < 0 || raw > ONBOARDING_MAX_PER_STAT) {
-            console.error('Distribuicao inicial invalida:', key, raw)
-            return null
-        }
-        normalizedAllocation[key] = raw
-    }
-
-    const totalAllocated = Object.values(normalizedAllocation).reduce((sum, value) => sum + value, 0)
-    if (totalAllocated !== ONBOARDING_STAT_POINTS) {
-        console.error('Distribuicao inicial invalida: total deve ser', ONBOARDING_STAT_POINTS, 'recebido', totalAllocated)
+    if (!result.success || !result.data) {
+        console.error('Erro ao criar personagem (seguro):', result.error)
         return null
     }
 
-    const finalStats = {
-        strength: classStats.strength + normalizedAllocation.strength,
-        defense: classStats.defense + normalizedAllocation.defense,
-        agility: classStats.agility + normalizedAllocation.agility,
-        accuracy: classStats.accuracy + normalizedAllocation.accuracy,
-        vigor: classStats.vigor + normalizedAllocation.vigor,
-    }
-    const finalHpMax = classStats.hp_max + (normalizedAllocation.vigor * 10)
-
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .upsert([{
-            id: userId,
-            username,
-            class: classType,
-            gold: classStats.gold,
-            ...finalStats,
-            hp_max: finalHpMax,
-            hp_current: finalHpMax,
-            energy: 100,
-            energy_last_regen_at: new Date().toISOString(),
-            last_regen_at: new Date().toISOString(),
-            level: 1,
-            xp: 0,
-            stat_points_available: 0,
-            unspent_points: 0
-        }])
-        .select('*')
-        .single()
-
-    if (error) {
-        console.error('Erro ao criar personagem:', error)
-        return null
-    }
-
-    // Classes mais leves começam com faca velha
-    if (classType === 'Pistoleiro' || classType === 'Forasteiro') {
-        await buyItem(userId, 'rusty_dagger', 0)
-        // Equipar automaticamente
-        const { data: inv } = await supabase.from('inventory').select('id').eq('profile_id', userId).eq('item_id', 'rusty_dagger').single()
-        if (inv) await toggleEquip(userId, inv.id)
-    }
-
-    return profile
+    return result.data
 }
 
 export async function getUserInventory(profileId: string) {
@@ -270,139 +244,25 @@ export async function getUserInventory(profileId: string) {
     return error ? [] : data
 }
 
-function calculateLevelUp(
-    currentLevel: number,
-    currentXp: number,
-    xpGain: number,
-    currentPoints: number,
-    hpMax: number,
-    currentHp: number,
-    currentEnergy: number
-) {
-    let nextLevel = currentLevel
-    let nextXp = currentXp + xpGain
-    let nextPoints = currentPoints
-    let healedHp = currentHp
-    let filledEnergy = currentEnergy
-
-    let leveledUp = false
-
-    while (nextXp >= nextLevel * 100) {
-        nextXp -= nextLevel * 100
-        nextLevel++
-        nextPoints += 3 // 3 pontos ao upar
-        healedHp = hpMax
-        filledEnergy = MAX_ENERGY
-        leveledUp = true
-    }
-
-    return {
-        level: nextLevel,
-        xp: nextXp,
-        stat_points_available: nextPoints,
-        hp_current: healedHp,
-        energy: filledEnergy,
-        leveledUp
-    }
-}
-
 export async function buyItem(profileId: string, itemId: string, price: number): Promise<boolean> {
-    // 1. Verificar Gold
-    const { data: profile } = await supabase.from('profiles').select('gold').eq('id', profileId).single()
-    if (!profile || profile.gold < price) return false
-
-    // 2. Deduzir Gold
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ gold: profile.gold - price })
-        .eq('id', profileId)
-
-    if (updateError) return false
-
-    // 3. Adicionar ao inventário
-    const { error: invError } = await supabase
-        .from('inventory')
-        .insert([{ profile_id: profileId, item_id: itemId }])
-
-    return !invError
+    if (!profileId) return false
+    const result = await callSecureAction('buy_item', { itemId })
+    if (!result.success) console.error('[SECURE-BUY] Falha na compra:', result.error, { itemId, price })
+    return result.success
 }
 
 export async function sellItem(profileId: string, inventoryId: string, sellPrice: number): Promise<boolean> {
-    // 1. Verificar se o item existe e pertence ao jogador
-    const { data: item } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('id', inventoryId)
-        .eq('profile_id', profileId)
-        .single()
-
-    if (!item || item.is_equipped) return false
-
-    // 2. Excluir o item do inventário
-    const { data: deleted, error: delError } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', inventoryId)
-        .eq('profile_id', profileId)
-        .select()
-
-    // Se houver erro ou nada for deletado, interrompe para evitar venda infinita
-    if (delError || !deleted || deleted.length === 0) return false
-
-    // 3. Adicionar Gold ao jogador
-    const { data: profile } = await supabase.from('profiles').select('gold').eq('id', profileId).single()
-    if (!profile) return false
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ gold: (profile.gold || 0) + sellPrice })
-        .eq('id', profileId)
-
-    return !updateError
+    if (!profileId) return false
+    const result = await callSecureAction('sell_item', { inventoryId })
+    if (!result.success) console.error('[SECURE-SELL] Falha na venda:', result.error, { inventoryId, sellPrice })
+    return result.success
 }
 
 export async function toggleEquip(profileId: string, inventoryId: string): Promise<boolean> {
-    // 1. Pegar o item atual
-    const { data: item } = await supabase.from('inventory').select('*').eq('id', inventoryId).single()
-    if (!item) return false
-
-    const isCurrentlyEquipped = item.is_equipped
-
-    if (!isCurrentlyEquipped) {
-        // Se for equipar, precisamos desequipar o outro do mesmo tipo primeiro
-        // (Aqui precisaríamos saber o tipo, mas como passamos o CATALOG_ITEMS para o front, o front gerencia isso?)
-        // De forma segura, pegamos o catálogo
-        const { ITEMS } = await import('./items')
-        const itemSpec = ITEMS.find(it => it.id === item.item_id)
-        if (!itemSpec) return false
-
-        // Buscar todos os itens do inventário para o perfil que estão atualmente equipados
-        const { data: fullInv } = await supabase.from('inventory').select('*').eq('profile_id', profileId).eq('is_equipped', true)
-
-        if (fullInv) {
-            const equippedOfSameType = fullInv.filter((invEntry: any) => {
-                const spec = ITEMS.find(it => it.id === invEntry.item_id)
-                return spec && spec.type === itemSpec.type
-            })
-
-            const maxEquip = itemSpec.type === 'relic' ? 2 : 1;
-
-            if (equippedOfSameType.length >= maxEquip) {
-                // Desequipar os que sobraram para dar espaço (desequipando o primeiro da fila)
-                const toUnequipCount = equippedOfSameType.length - maxEquip + 1;
-                for (let i = 0; i < toUnequipCount; i++) {
-                    await supabase.from('inventory').update({ is_equipped: false }).eq('id', equippedOfSameType[i].id)
-                }
-            }
-        }
-    }
-
-    const { error } = await supabase
-        .from('inventory')
-        .update({ is_equipped: !isCurrentlyEquipped })
-        .eq('id', inventoryId)
-
-    return !error
+    if (!profileId) return false
+    const result = await callSecureAction('toggle_equip', { inventoryId })
+    if (!result.success) console.error('[SECURE-EQUIP] Falha ao alternar equipamento:', result.error, { inventoryId })
+    return result.success
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -428,482 +288,101 @@ export async function getEnemies(): Promise<Enemy[]> {
 }
 
 export async function startJobAction(profileId: string, job: Job) {
-    const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-    if (profileError || !profile) return false
-
-    const normalizedProfile = await syncVitals(profile)
-    if (normalizedProfile.current_job_id) return false
-    if (normalizedProfile.energy < job.energy_cost) return false
-
-    const finishAt = new Date()
-    finishAt.setSeconds(finishAt.getSeconds() + job.duration_seconds)
-
-    const { error } = await supabase
-        .from('profiles')
-        .update({
-            energy: normalizedProfile.energy - job.energy_cost,
-            energy_last_regen_at: new Date().toISOString(),
-            current_job_id: job.id,
-            job_finish_at: finishAt.toISOString()
-        })
-        .eq('id', profileId)
-
-    if (error) {
-        console.error('[DEBUG-JOB] Error starting job:', error.message, 'Code:', error.code, 'Details:', error.details);
-    } else {
-        console.log('[DEBUG-JOB] Job started successfully:', job.title);
-    }
-
-    return !error
+    if (!profileId || !job?.id) return false
+    const result = await callSecureAction('start_job', { jobId: job.id })
+    if (!result.success) console.error('[SECURE-JOB] Falha ao iniciar missão:', result.error, { jobId: job.id })
+    return result.success
 }
 
 export async function claimJobAction(profile: Profile, job: Job) {
-    const { data: latestProfile, error: getError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profile.id)
-        .single()
-
-    if (getError || !latestProfile) return false
-
-    // Segurança: Verificar se o tempo de conclusão realmente passou
-    if (!latestProfile.job_finish_at) return false
-    const finishTime = new Date(latestProfile.job_finish_at).getTime()
-    const now = Date.now()
-
-    if (now < finishTime) {
-        console.error('[DEBUG-JOB] Tentativa de coleta prematura detectada:', {
-            now: new Date(now).toISOString(),
-            finish: latestProfile.job_finish_at
-        });
-        return false
+    if (!profile?.id) return false
+    const result = await callSecureAction('claim_job')
+    if (!result.success) {
+        console.error('[SECURE-JOB] Falha ao coletar missão:', result.error, { profileId: profile.id, jobId: job?.id })
     }
-
-    const normalizedProfile = await syncVitals(latestProfile)
-
-    const levelUpData = calculateLevelUp(
-        normalizedProfile.level,
-        normalizedProfile.xp,
-        job.reward_xp,
-        normalizedProfile.stat_points_available,
-        normalizedProfile.hp_max,
-        normalizedProfile.hp_current,
-        normalizedProfile.energy
-    )
-
-    const { error } = await supabase
-        .from('profiles')
-        .update({
-            level: levelUpData.level,
-            xp: levelUpData.xp,
-            stat_points_available: levelUpData.stat_points_available,
-            hp_current: levelUpData.hp_current,
-            energy: levelUpData.energy,
-            gold: normalizedProfile.gold + job.reward_gold,
-            current_job_id: null,
-            job_finish_at: null
-        })
-        .eq('id', normalizedProfile.id)
-
-    if (error) {
-        console.error('[DEBUG-JOB] Error claiming job rewards:', error.message, 'Code:', error.code, 'Details:', error.details);
-    } else {
-        console.log('[DEBUG-JOB] Job rewards claimed successfully:', job.title);
-        await grantDrops(normalizedProfile.id, false);
-    }
-
-    return !error
+    return result.success
 }
 
 export async function distributeStats(profileId: string, attr: 'strength' | 'agility' | 'accuracy' | 'vigor', points: number = 1): Promise<boolean> {
-    const { data: profile, error: getError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-    if (getError || !profile) return false
-    if (profile.stat_points_available < points) return false
-
-    const updates: any = {
-        stat_points_available: profile.stat_points_available - points,
-        [attr]: (profile[attr] || 0) + points
-    }
-
-    // Vigor aumenta HP Máximo (+10 por ponto)
-    if (attr === 'vigor') {
-        updates.hp_max = (profile.hp_max || 100) + (points * 10);
-        updates.hp_current = (profile.hp_current || 100) + (points * 10); // Cura o jogador ao aumentar o vigor? Geralmente sim em RPGs.
-    }
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', profileId)
-
-    return !updateError
+    if (!profileId || points <= 0) return false
+    const allocations: InitialStatAllocation = { [attr]: points } as InitialStatAllocation
+    const result = await callSecureAction('distribute_stats_batch', { allocations })
+    if (!result.success) console.error('[SECURE-STATS] Falha ao distribuir pontos:', result.error, { attr, points })
+    return result.success
 }
 
 export async function distributeStatsBatch(profileId: string, allocations: InitialStatAllocation): Promise<boolean> {
-    const { data: profile, error: getError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-    if (getError || !profile) return false
-
-    const totalPointsNeeded = Object.values(allocations).reduce((sum, val) => sum + (val || 0), 0)
-    if (profile.stat_points_available < totalPointsNeeded) return false
-
-    const updates: any = {
-        stat_points_available: profile.stat_points_available - totalPointsNeeded
-    }
-
-    let hpBonus = 0
-    for (const [key, points] of Object.entries(allocations)) {
-        if (points && points > 0) {
-            updates[key] = (profile[key] || 0) + points
-            if (key === 'vigor') {
-                hpBonus += points * 10
-            }
-        }
-    }
-
-    if (hpBonus > 0) {
-        updates.hp_max = (profile.hp_max || 100) + hpBonus
-        updates.hp_current = (profile.hp_current || 100) + hpBonus
-    }
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', profileId)
-
-    return !updateError
+    if (!profileId) return false
+    const result = await callSecureAction('distribute_stats_batch', { allocations })
+    if (!result.success) console.error('[SECURE-STATS] Falha no lote de atributos:', result.error, allocations)
+    return result.success
 }
 
 export async function awardCombatRewards(profileId: string, xpGain: number, goldGain: number): Promise<boolean> {
-    const { data: profile, error: getError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-    if (getError || !profile) return false
-
-    const levelUpData = calculateLevelUp(
-        profile.level,
-        profile.xp,
-        xpGain,
-        profile.stat_points_available,
-        profile.hp_max,
-        profile.hp_current,
-        profile.energy
-    )
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-            level: levelUpData.level,
-            xp: levelUpData.xp,
-            stat_points_available: levelUpData.stat_points_available,
-            hp_current: levelUpData.hp_current,
-            energy: levelUpData.energy,
-            gold: (profile.gold || 0) + goldGain
-        })
-        .eq('id', profileId)
-
-    return !updateError
+    console.warn('[SECURE] awardCombatRewards está desativado no cliente. Use resolveArenaCombat via servidor.', { profileId, xpGain, goldGain })
+    return false
 }
 
-async function grantDrops(profileId: string, isDuel: boolean) {
-    let consumableDrop = undefined
-    let equipmentDrop = undefined
-
-    // Roll 1: Consumível (20% chance)
-    if (Math.random() < 0.20) {
-        const consumables = ITEMS.filter(i => i.type === 'consumable')
-        const roll = Math.floor(Math.random() * consumables.length)
-        const itemSpec = consumables[roll]
-
-        if (itemSpec) {
-            const { error: insErr } = await supabase.from('inventory').insert({
-                profile_id: profileId,
-                item_id: itemSpec.id
-            })
-            if (!insErr) {
-                consumableDrop = { name: itemSpec.name, icon: itemSpec.icon }
-            }
-        }
+export async function beginArenaCombat(profileId: string, enemyId: string): Promise<{ success: boolean; ticket?: string; error?: string }> {
+    if (!profileId || !enemyId) {
+        return { success: false, error: 'Parâmetros inválidos para iniciar duelo.' }
     }
 
-    // Roll 2: Equipamento (20% chance de ocorrência)
-    if (Math.random() < 0.20) {
-        const rarityRoll = Math.random() * 100
-        let targetRarity: ItemRarity = 'common'
-
-        if (rarityRoll < 0.5) targetRarity = 'legendary'
-        else if (rarityRoll < 4) targetRarity = 'epic'
-        else if (rarityRoll < 12) targetRarity = 'rare'
-        else if (rarityRoll < 35) targetRarity = 'uncommon'
-        else targetRarity = 'common'
-
-        const possibleItems = ITEMS.filter(i => {
-            if (i.type === 'consumable') return false;
-            // Armas só podem ser dropadas durante Duelos, em trabalhos não.
-            if (!isDuel && i.type === 'weapon') return false;
-            return i.rarity === targetRarity;
-        })
-
-        if (possibleItems.length > 0) {
-            const roll = Math.floor(Math.random() * possibleItems.length)
-            const itemSpec = possibleItems[roll]
-
-            const { error: insErr } = await supabase.from('inventory').insert({
-                profile_id: profileId,
-                item_id: itemSpec.id
-            })
-            if (!insErr) {
-                equipmentDrop = { name: itemSpec.name, icon: itemSpec.icon, rarity: itemSpec.rarity }
-            }
-        }
+    const result = await callSecureAction<{ ticket: string }>('begin_arena', { enemyId })
+    if (!result.success || !result.data?.ticket) {
+        return { success: false, error: result.error || 'Falha ao iniciar duelo seguro.' }
     }
 
-    return { consumableDrop, equipmentDrop }
-}
-
-function getArenaRewards(enemy: Enemy) {
-    const xpGain = Math.max(8, Math.floor(enemy.level * 12 + enemy.hp_max * 0.18))
-    const goldGain = Math.max(5, Math.floor(enemy.level * 7 + enemy.strength * 0.6))
-    return { xpGain, goldGain }
-}
-
-async function getEquippedRelicCombatBonuses(profileId: string) {
-    const { data: equippedInv } = await supabase
-        .from('inventory')
-        .select('item_id')
-        .eq('profile_id', profileId)
-        .eq('is_equipped', true)
-
-    if (!equippedInv || equippedInv.length === 0) {
-        return { goldPct: 0, dropPct: 0 }
-    }
-
-    let goldPct = 0
-    let dropPct = 0
-
-    for (const entry of equippedInv) {
-        const spec = ITEMS.find(i => i.id === entry.item_id)
-        if (!spec || spec.type !== 'relic' || !spec.relic_effect) continue
-        goldPct += Number(spec.relic_effect.gold_per_duel_pct || 0)
-        dropPct += Number(spec.relic_effect.item_drop_per_duel_pct || 0)
-    }
-
-    return { goldPct, dropPct }
+    return { success: true, ticket: result.data.ticket }
 }
 
 export async function resolveArenaCombat(
     profileId: string,
     enemy: Enemy,
     playerWon: boolean,
-    hpAfterCombat: number
+    hpAfterCombat: number,
+    combatTicket?: string
 ): Promise<CombatResolution> {
-    const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-    if (profileError || !profile) {
+    if (!profileId || !enemy?.id || !combatTicket) {
         return {
             success: false,
-            playerWon,
+            playerWon: false,
             xpGain: 0,
             goldGain: 0,
             energyCost: COMBAT_ENERGY_COST,
-            hpAfter: Math.max(1, hpAfterCombat)
+            hpAfter: Math.max(1, Math.floor(hpAfterCombat || 1))
         }
     }
 
-    const normalizedProfile = await syncVitals(profile)
-    if (normalizedProfile.energy < COMBAT_ENERGY_COST) {
+    const result = await callSecureAction<CombatResolution>('resolve_arena', {
+        enemyId: enemy.id,
+        combatTicket,
+        // Mantidos apenas para auditoria de divergência entre cliente e servidor.
+        clientPlayerWon: playerWon,
+        clientHpAfterCombat: hpAfterCombat
+    })
+
+    if (!result.success || !result.data) {
+        console.error('[SECURE-ARENA] Falha ao resolver duelo:', result.error, { enemyId: enemy.id })
         return {
             success: false,
-            playerWon,
+            playerWon: false,
             xpGain: 0,
             goldGain: 0,
             energyCost: COMBAT_ENERGY_COST,
-            hpAfter: normalizedProfile.hp_current
+            hpAfter: Math.max(1, Math.floor(hpAfterCombat || 1))
         }
     }
 
-    // Never trust client-provided enemy stats for rewards.
-    // Use canonical enemy data from DB to keep gold/xp consistent.
-    let rewardEnemy = enemy
-    const { data: enemyRow } = await supabase
-        .from('npc_enemies')
-        .select('id,name,level,hp_max,strength,agility,precision')
-        .eq('id', enemy.id)
-        .single()
-
-    if (enemyRow) {
-        rewardEnemy = enemyRow as Enemy
-    }
-
-    const rewards = playerWon ? getArenaRewards(rewardEnemy) : { xpGain: 2, goldGain: 0 }
-    const relicBonuses = playerWon
-        ? await getEquippedRelicCombatBonuses(normalizedProfile.id)
-        : { goldPct: 0, dropPct: 0 }
-    const bonusGold = Math.floor(rewards.goldGain * (relicBonuses.goldPct / 100))
-    const totalGoldGain = rewards.goldGain + bonusGold
-    const safeHpAfter = Math.max(1, Math.min(normalizedProfile.hp_current, Math.floor(hpAfterCombat)))
-    const nextEnergy = Math.max(0, normalizedProfile.energy - COMBAT_ENERGY_COST)
-
-    const levelUpData = calculateLevelUp(
-        normalizedProfile.level,
-        normalizedProfile.xp,
-        rewards.xpGain,
-        normalizedProfile.stat_points_available,
-        normalizedProfile.hp_max,
-        safeHpAfter,
-        nextEnergy
-    )
-
-    let consumableDrop = undefined
-    let equipmentDrop = undefined
-
-    if (playerWon) {
-        // Roll 1: Consumível (20% chance)
-        if (Math.random() < 0.20) {
-            const consumables = ITEMS.filter(i => i.type === 'consumable')
-            const roll = Math.floor(Math.random() * consumables.length)
-            const itemSpec = consumables[roll]
-
-            if (itemSpec) {
-                const { error: insErr } = await supabase.from('inventory').insert({
-                    profile_id: normalizedProfile.id,
-                    item_id: itemSpec.id
-                })
-                if (!insErr) {
-                    consumableDrop = { name: itemSpec.name, icon: itemSpec.icon }
-                }
-            }
-        }
-
-        // Roll 2: Equipamento (20% chance de ocorrência)
-        if (Math.random() < 0.20) {
-            const rarityRoll = Math.random() * 100
-            let targetRarity: ItemRarity = 'common'
-
-            if (rarityRoll < 0.5) targetRarity = 'legendary'
-            else if (rarityRoll < 4) targetRarity = 'epic'
-            else if (rarityRoll < 12) targetRarity = 'rare'
-            else if (rarityRoll < 35) targetRarity = 'uncommon'
-            else targetRarity = 'common'
-
-            const possibleItems = ITEMS.filter(i => i.rarity === targetRarity && i.type !== 'consumable')
-            if (possibleItems.length > 0) {
-                const roll = Math.floor(Math.random() * possibleItems.length)
-                const itemSpec = possibleItems[roll]
-
-                const { error: insErr } = await supabase.from('inventory').insert({
-                    profile_id: normalizedProfile.id,
-                    item_id: itemSpec.id
-                })
-                if (!insErr) {
-                    equipmentDrop = { name: itemSpec.name, icon: itemSpec.icon, rarity: itemSpec.rarity }
-                }
-            }
-        }
-    }
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-            level: levelUpData.level,
-            xp: levelUpData.xp,
-            stat_points_available: levelUpData.stat_points_available,
-            hp_current: levelUpData.hp_current,
-            energy: levelUpData.energy,
-            gold: normalizedProfile.gold + totalGoldGain,
-            energy_last_regen_at: new Date().toISOString()
-        })
-        .eq('id', normalizedProfile.id)
-
-    if (updateError) {
-        return {
-            success: false,
-            playerWon,
-            xpGain: 0,
-            goldGain: 0,
-            energyCost: COMBAT_ENERGY_COST,
-            hpAfter: normalizedProfile.hp_current
-        }
-    }
-
-    return {
-        success: true,
-        playerWon,
-        xpGain: rewards.xpGain,
-        goldGain: totalGoldGain,
-        energyCost: COMBAT_ENERGY_COST,
-        hpAfter: levelUpData.hp_current,
-        leveledUp: levelUpData.leveledUp,
-        consumableDrop,
-        equipmentDrop
-    }
+    return result.data
 }
-export async function consumeItem(profileId: string, inventoryId: string, item: Item): Promise<{ success: boolean; message: string }> {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', profileId).single()
-    if (!profile) return { success: false, message: 'Perfil não encontrado' }
+export async function consumeItem(profileId: string, inventoryId: string, _item: Item): Promise<{ success: boolean; message: string }> {
+    if (!profileId) return { success: false, message: 'Perfil inválido.' }
+    const result = await callSecureAction<{ success: boolean; message: string }>('consume_item', { inventoryId })
 
-    // Recover HP
-    let hp_gain = 0
-    if (item.stats?.hp_current) {
-        const potentialHp = profile.hp_current + item.stats.hp_current
-        const maxHp = profile.hp_max
-        hp_gain = Math.min(item.stats.hp_current, maxHp - profile.hp_current)
-        if (hp_gain < 0) hp_gain = 0
+    if (!result.success) {
+        return { success: false, message: result.error || 'Falha ao consumir item.' }
     }
 
-    // Recover Energy
-    let energy_gain = 0
-    if (item.stats?.energy) {
-        const potentialEnergy = profile.energy + item.stats.energy
-        energy_gain = Math.min(item.stats.energy, MAX_ENERGY - profile.energy)
-        if (energy_gain < 0) energy_gain = 0
-    }
-
-    if (hp_gain === 0 && energy_gain === 0) {
-        return { success: false, message: 'Você já está com os stats no máximo!' }
-    }
-
-    // Delete item (explicitly requesting returned rows to verify deletion over RLS)
-    const { data: delData, error: delErr } = await supabase.from('inventory').delete().eq('id', inventoryId).select()
-    if (delErr) return { success: false, message: 'Erro ao remover item' }
-    if (!delData || delData.length === 0) {
-        console.error('[CONSUME] Falha ao deletar item. Provavelmente RLS Policy de DELETE ausente na tabela inventory:', inventoryId);
-        return { success: false, message: 'ERRO NO BANCO: Item não pôde ser consumido. Verifique se a tabela "inventory" possui a política (RLS) que permite DELETE para usuarios logados.' }
-    }
-
-    // Update profile
-    const { error: updErr } = await supabase.from('profiles').update({
-        hp_current: profile.hp_current + hp_gain,
-        energy: profile.energy + energy_gain
-    }).eq('id', profileId)
-
-    if (updErr) return { success: false, message: 'Erro ao aplicar atributos' }
-
-    let msgParts = []
-    if (hp_gain > 0) msgParts.push(`${hp_gain} PV`)
-    if (energy_gain > 0) msgParts.push(`${energy_gain} Energia`)
-
-    return { success: true, message: `Você recuperou ${msgParts.join(' e ')}!` }
+    return result.data || { success: false, message: 'Falha ao consumir item.' }
 }
-

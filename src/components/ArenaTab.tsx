@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef, CSSProperties } from 'react'
-import { Profile, Enemy, COMBAT_ENERGY_COST, getEnemies, getUserInventory, resolveArenaCombat, ONBOARDING_STAT_POINTS } from '@/lib/gameActions'
+import { Profile, Enemy, COMBAT_ENERGY_COST, beginArenaCombat, getEnemies, getUserInventory, resolveArenaCombat, ONBOARDING_STAT_POINTS } from '@/lib/gameActions'
 import { simulateCombat, Fighter, NarrativeTurn } from '@/combat'
-import { ITEMS as CATALOG_ITEMS, Item, ItemRarity } from '@/lib/items'
+import { ITEMS as CATALOG_ITEMS, Item, ItemRarity, getItemById } from '@/lib/items'
 import { deriveSoulsStats, SoulsDerivedStats } from '@/lib/soulslike'
 import CharacterPortrait from './CharacterPortrait'
 import StatBar from './StatBar'
@@ -220,6 +220,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         winnerName: string;
         finalPlayerHp: number;
         enemy: Enemy;
+        combatTicket: string;
     } | null>(null);
 
     const [shouldSkipCombat, setShouldSkipCombat] = useState(false);
@@ -235,7 +236,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         const inventory = await getUserInventory(profile.id)
         const equippedItems = (inventory || [])
             .filter((inv: any) => inv.is_equipped)
-            .map((inv: any) => CATALOG_ITEMS.find(it => it.id === inv.item_id))
+            .map((inv: any) => getItemById(inv.item_id))
             .filter(Boolean) as Item[]
         setSoulsSnapshot(deriveSoulsStats(profile, equippedItems as any))
 
@@ -280,6 +281,14 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
             alert(`Energia insuficiente. Necessário: ${COMBAT_ENERGY_COST}.`)
             return
         }
+
+        const arenaStart = await beginArenaCombat(profile.id, selectedEnemy.id)
+        if (!arenaStart.success || !arenaStart.ticket) {
+            alert(arenaStart.error || 'Falha de segurança ao iniciar duelo. Tente novamente.')
+            return
+        }
+
+        const combatTicket = arenaStart.ticket
         setIsFighting(true)
         setShowCollectButton(false)
         setShouldSkipCombat(false)
@@ -294,7 +303,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         const inventory = await getUserInventory(profile.id)
         const equippedItems = (inventory || [])
             .filter((inv: any) => inv.is_equipped)
-            .map((inv: any) => CATALOG_ITEMS.find(it => it.id === inv.item_id))
+            .map((inv: any) => getItemById(inv.item_id))
             .filter(Boolean)
 
         let weaponName = 'punhos'
@@ -390,7 +399,8 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         setFinalCombatResult({
             winnerName: result.winner,
             finalPlayerHp: finalPlayerHpVal,
-            enemy: balancedEnemy
+            enemy: balancedEnemy,
+            combatTicket
         })
         setShowCollectButton(true)
         setIsFighting(false)
@@ -404,7 +414,8 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
             profile.id,
             finalCombatResult.enemy,
             finalCombatResult.winnerName.toLowerCase() === profile.username.toLowerCase(),
-            finalCombatResult.finalPlayerHp
+            finalCombatResult.finalPlayerHp,
+            finalCombatResult.combatTicket
         )
 
         if (resolution.success) {
@@ -729,4 +740,3 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         </div>
     )
 }
-

@@ -1,5 +1,5 @@
 import { Profile } from './gameActions'
-import { ITEMS as CATALOG_ITEMS } from './items'
+import { getItemById } from './items'
 
 export interface StatBonuses {
     strength: number
@@ -28,7 +28,7 @@ export function getStatBonuses(inventory: any[]): StatBonuses {
     const equippedItems = inventory.filter(inv => inv.is_equipped)
 
     equippedItems.forEach(inv => {
-        const spec = CATALOG_ITEMS.find(it => it.id === inv.item_id)
+        const spec = getItemById(inv.item_id)
         if (spec && spec.stats) {
             Object.entries(spec.stats).forEach(([stat, val]) => {
                 if (stat in bonuses) {

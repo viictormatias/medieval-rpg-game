@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { Profile, getUserInventory, toggleEquip, consumeItem, sellItem } from '@/lib/gameActions'
-import { ITEMS as CATALOG_ITEMS, ItemType } from '@/lib/items'
+import { ItemType, getItemById } from '@/lib/items'
 import { checkItemRequirements, deriveSoulsStats } from '@/lib/soulslike'
 import Lightbox from './Lightbox'
 
@@ -52,25 +52,25 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         all: 'Tudo',
         weapon: 'Armas',
         shield: 'Acessório Extra',
-        helmet: 'Chapeus',
+        helmet: 'Chapéus',
         chest: 'Casacos',
         gloves: 'Luvas',
-        legs: 'Calcas',
+        legs: 'Calças',
         boots: 'Botas',
-        consumable: 'Consumiveis',
-        relic: 'Reliquias'
+        consumable: 'Consumíveis',
+        relic: 'Relíquias'
     }
 
     const ITEM_TYPE_LABELS: Record<ItemType, string> = {
         weapon: 'Arma',
-        shield: 'Acessorio Extra',
-        helmet: 'Chapeu',
+        shield: 'Acessório Extra',
+        helmet: 'Chapéu',
         chest: 'Casaco',
         gloves: 'Luvas',
-        legs: 'Calcas',
+        legs: 'Calças',
         boots: 'Botas',
-        consumable: 'Consumivel',
-        relic: 'Reliquia'
+        consumable: 'Consumível',
+        relic: 'Relíquia'
     }
 
     const relicEffectsForDisplay = (item: any): string[] => {
@@ -79,6 +79,8 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         if (item?.relic_effect?.item_drop_per_duel_pct) effects.push(`+${item.relic_effect.item_drop_per_duel_pct}% Chance de drop`)
         return effects
     }
+
+    const formatSigned = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
     const loadInventory = async () => {
         const items = await getUserInventory(profile.id)
@@ -126,7 +128,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     }
 
     const itemsWithDetails = invItems.map(invEntry => {
-        const spec = CATALOG_ITEMS.find(it => it.id === invEntry.item_id)
+        const spec = getItemById(invEntry.item_id)
         if (!spec) return null
         return { ...spec, quantity: invEntry.quantity || 1, is_equipped: invEntry.is_equipped, inventory_id: invEntry.id }
     }).filter(Boolean) as any[]
@@ -267,7 +269,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                                                             k === 'hp_current' ? '❤️ Vida' :
                                                                 k === 'energy' ? '⚡ Energia' : k}
                                     </span>
-                                    <span className="text-gold font-bold">+{v as number}</span>
+                                    <span className="text-gold font-bold">{formatSigned(Number(v))}</span>
                                 </div>
                             ))}
                             {relicEffectsForDisplay(item).map((effect) => (
@@ -390,7 +392,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                                                                                             k === 'energy' ? '⚡ Energia' : k}
                                                                 </span>
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <span className="text-gold font-bold">+{v as number}</span>
+                                                                    <span className="text-gold font-bold">{formatSigned(Number(v))}</span>
                                                                     {equipped && diff !== 0 && (
                                                                         <span className={`text-[10px] font-black ${diff > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                                             ({diff > 0 ? `+${diff}` : diff})
@@ -517,7 +519,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
 
                                 <div className="grid grid-cols-2 md:grid-cols-1 gap-1 md:gap-2 lg:gap-2">
                                     {[
-                                        { label: 'HP Máx', base: profile.hp_max, bonus: soulsStats.bonuses.vigor * 10, icon: '❤️' },
+                                        { label: 'HP Máx', base: profile.hp_max, bonus: soulsStats.hpBonus, icon: '❤️' },
                                         { label: 'Força', base: profile.strength, bonus: soulsStats.bonuses.strength, icon: '⚔️' },
                                         { label: 'Defesa', base: profile.defense, bonus: soulsStats.bonuses.defense, icon: '🛡️' },
                                         { label: 'Agilidade', base: profile.agility, bonus: soulsStats.bonuses.agility, icon: '💨' },
@@ -565,4 +567,3 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
 
     )
 }
-

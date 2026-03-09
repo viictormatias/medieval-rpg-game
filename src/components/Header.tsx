@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 function getPlayerClass(level: number): string {
     if (level < 5) return 'Novato'
     if (level < 10) return 'Pistoleiro'
-    if (level < 20) return 'Cacador de Recompensa'
+    if (level < 20) return 'Caçador de Recompensa'
     if (level < 35) return 'Lenda da Fronteira'
     return 'Rei do Gatilho'
 }
@@ -121,7 +121,9 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
     const bonuses = getStatBonuses(invItems)
     const playerClass = getPlayerClass(profile.level)
     const xpNeeded = xpForNextLevel(profile.level)
-    const totalHpMax = profile.hp_max + (bonuses.vigor * 10)
+    const gearHpBonus = bonuses.vigor
+    const totalHpMax = profile.hp_max + gearHpBonus
+    const totalHpCurrent = Math.min(totalHpMax, profile.hp_current + gearHpBonus)
 
     const handleClaim = async () => {
         if (!activeJob) return
@@ -238,7 +240,7 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                         <span className="text-[10px] md:text-[12px] font-bold text-red-500 w-10 md:w-12 text-right uppercase tracking-tight flex-shrink-0">Vida</span>
                         <div className="flex-1">
                             <StatBar
-                                value={profile.hp_current}
+                                value={totalHpCurrent}
                                 max={totalHpMax}
                                 type="hp"
                                 label="HP"

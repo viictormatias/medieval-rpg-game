@@ -13,6 +13,7 @@ interface LightboxProps {
 
 export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxProps) {
     const [mounted, setMounted] = useState(false)
+    const formatSigned = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
     // Garante que o portal só é renderizado no cliente
     useEffect(() => {
@@ -82,7 +83,7 @@ export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxP
                                                                 stat === 'hp_current' ? 'Vida' :
                                                                     stat === 'energy' ? 'Energia' : stat}
                                         </span>
-                                        <span className="text-gold font-bold text-sm">+{val}</span>
+                                        <span className="text-gold font-bold text-sm">{formatSigned(Number(val))}</span>
                                     </div>
                                 ))}
                             </div>

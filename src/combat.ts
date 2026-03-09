@@ -184,7 +184,7 @@ const NARRATIVE_TEMPLATES = {
         "💀 {defender} nem gritou — o golpe {art_prep} {bodyPart} foi rápido demais.",
         "💀 {attacker} guarda {weapon} e tira o chapéu. Até que {defender} durou bastante.",
         "💀 Os urubus já tão de olho. {attacker} mandou {defender} dormir o sono eterno com {weapon}.",
-        "💀 ERÁ ISSO! {attacker} crava {weapon} {art_prep} {bodyPart} e o duelo acaba aqui!"
+        "💀 ERA ISSO! {attacker} crava {weapon} {art_prep} {bodyPart} e o duelo acaba aqui!"
     ]
 };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Profile, getUserInventory } from '@/lib/gameActions'
 import { supabase } from '@/lib/supabase'
-import { ITEMS } from '@/lib/items'
+import { getItemById } from '@/lib/items'
 import { deriveSoulsStats } from '@/lib/soulslike'
 import CharacterPortrait from './CharacterPortrait'
 
@@ -101,7 +101,7 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
         const inventory = await getUserInventory(profile.id)
         const equipped = (inventory || [])
             .filter((inv: any) => inv.is_equipped)
-            .map((inv: any) => ITEMS.find(it => it.id === inv.item_id))
+            .map((inv: any) => getItemById(inv.item_id))
             .filter(Boolean)
 
         // Preview with pending stats

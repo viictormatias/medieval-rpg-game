@@ -28,7 +28,7 @@ export default function Dashboard() {
     isRefreshing.current = true
 
     if (!supabase || !isConfigValid) {
-      setError('Configuracao do Supabase incompleta ou invalida no .env.local')
+      setError('Configuração do Supabase incompleta ou inválida no .env.local')
       setLoading(false)
       isRefreshing.current = false
       return
@@ -122,7 +122,7 @@ export default function Dashboard() {
           <h2 className="text-xl font-bold text-red-500 title-western">PROBLEMA NO SALOON</h2>
           <p className="text-gray-400 text-sm">{error}</p>
           <button onClick={() => window.location.reload()} className="btn-western px-6 py-2 text-red-500">
-            RECARREGAR PAGINA
+            RECARREGAR PÁGINA
           </button>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto space-y-0">
           <nav
             className="flex items-end gap-1 md:gap-2 px-1 md:px-2 overflow-x-auto overflow-y-hidden whitespace-nowrap pb-1 snap-x"
-            aria-label="Navegacao principal"
+            aria-label="Navegação principal"
           >
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id
@@ -287,7 +287,7 @@ export default function Dashboard() {
       </div>
 
       <footer className="w-full py-6 md:py-8 text-center text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.4em] text-gray-700 z-20 px-4">
-        Far West (c) 2026 - Poeira, chumbo e gloria - Victor Matias
+        Far West (c) 2026 - Poeira, chumbo e glória - Victor Matias
       </footer>
     </main>
   )

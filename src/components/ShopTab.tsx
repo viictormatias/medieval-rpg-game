@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Profile, buyItem, sellItem, getUserInventory } from '@/lib/gameActions'
-import { ITEMS, Item, ItemType } from '@/lib/items'
+import { ITEMS, Item, ItemType, getItemById } from '@/lib/items'
 import { checkItemRequirements } from '@/lib/soulslike'
 import Lightbox from './Lightbox'
 
@@ -10,8 +10,8 @@ const RARITY_COLORS: Record<string, { border: string; glow: string; label: strin
     common: { border: '#3a3a3a', glow: 'transparent', label: 'Comum', textColor: '#9ca3af' },
     uncommon: { border: '#22c55e', glow: 'rgba(34,197,94,0.3)', label: 'Incomum', textColor: '#4ade80' },
     rare: { border: '#3b82f6', glow: 'rgba(59,130,246,0.3)', label: 'Raro', textColor: '#60a5fa' },
-    epic: { border: '#a855f7', glow: 'rgba(168,85,247,0.4)', label: 'Ã‰pico', textColor: '#c084fc' },
-    legendary: { border: '#f2b90d', glow: 'rgba(242,185,13,0.4)', label: 'LendÃ¡rio', textColor: '#f2b90d' },
+    epic: { border: '#a855f7', glow: 'rgba(168,85,247,0.4)', label: 'Épico', textColor: '#c084fc' },
+    legendary: { border: '#f2b90d', glow: 'rgba(242,185,13,0.4)', label: 'Lendário', textColor: '#f2b90d' },
 }
 
 function ItemIcon({ item, className = "" }: { item: any; className?: string }) {
@@ -49,26 +49,26 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
     const FILTER_LABELS: Record<'all' | ItemType, string> = {
         all: 'Tudo',
         weapon: 'Armas',
-        shield: 'AcessÃ³rio Extra',
-        helmet: 'Chapeus',
+        shield: 'Acessório Extra',
+        helmet: 'Chapéus',
         chest: 'Casacos',
         gloves: 'Luvas',
-        legs: 'Calcas',
+        legs: 'Calças',
         boots: 'Botas',
         consumable: 'Suprimentos',
-        relic: 'Reliquias'
+        relic: 'Relíquias'
     }
 
     const ITEM_TYPE_LABELS: Record<ItemType, string> = {
         weapon: 'Arma',
-        shield: 'AcessÃ³rio Extra',
-        helmet: 'ChapÃ©u',
+        shield: 'Acessório Extra',
+        helmet: 'Chapéu',
         chest: 'Casaco',
         gloves: 'Luvas',
-        legs: 'CalÃ§a',
+        legs: 'Calça',
         boots: 'Botas',
-        consumable: 'ConsumÃ­vel',
-        relic: 'RelÃ­quia'
+        consumable: 'Consumível',
+        relic: 'Relíquia'
     }
 
     const loadInventory = async () => {
@@ -123,6 +123,8 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
         if (item.relic_effect?.item_drop_per_duel_pct) effects.push(`+${item.relic_effect.item_drop_per_duel_pct}% Chance de drop`)
         return effects
     }
+
+    const formatSigned = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -211,18 +213,18 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                     <p className="text-xs md:text-base text-[#d9c5b2] leading-relaxed mb-3 italic font-medium">"{item.description}"</p>
 
                                     <div className="text-[8px] md:text-[9px] text-gray-400 mb-2 flex gap-3 uppercase">
-                                        {item.scaling && <span>Escalonamento: <span className="text-gold">{Object.entries(item.scaling).map(([k, v]) => `${(k === 'strength' ? 'âš”ï¸ FOR' : k === 'agility' ? 'ðŸ’¨ AGI' : k === 'accuracy' ? 'ðŸŽ¯ PON' : 'ðŸ’ª VIG')} ${v}`).join(' | ')}</span></span>}
+                                        {item.scaling && <span>Escalonamento: <span className="text-gold">{Object.entries(item.scaling).map(([k, v]) => `${(k === 'strength' ? '⚔️ FOR' : k === 'agility' ? '💨 AGI' : k === 'accuracy' ? '🎯 PON' : '💪 VIG')} ${v}`).join(' | ')}</span></span>}
                                     </div>
 
                                     {item.requirements && (
                                         <div className={`text-[10px] md:text-sm mb-3 font-black uppercase tracking-tight ${reqStatus.meets ? 'text-green-400' : 'text-red-400'}`}>
-                                            Requisitos: {Object.entries(item.requirements).map(([k, v]) => `${(k === 'strength' ? 'âš”ï¸' : k === 'agility' ? 'ðŸ’¨' : k === 'accuracy' ? 'ðŸŽ¯' : 'ðŸ’ª')} ${k.slice(0, 3).toUpperCase()} ${v}`).join(' | ')}
+                                            Requisitos: {Object.entries(item.requirements).map(([k, v]) => `${(k === 'strength' ? '⚔️' : k === 'agility' ? '💨' : k === 'accuracy' ? '🎯' : '💪')} ${k.slice(0, 3).toUpperCase()} ${v}`).join(' | ')}
                                             {!reqStatus.meets && (
                                                 <div className="mt-1 flex flex-col gap-0.5">
                                                     <div className="text-red-500/80">Faltando:</div>
                                                     {reqStatus.unmet.map((u: any) => (
                                                         <div key={u.attr} className="flex justify-between items-center text-[9px] md:text-[11px] bg-red-950/20 px-1.5 py-0.5 rounded-xs border border-red-900/30">
-                                                            <span>{u.attr === 'strength' ? 'âš”ï¸ FOR' : u.attr === 'agility' ? 'ðŸ’¨ AGI' : u.attr === 'accuracy' ? 'ðŸŽ¯ PON' : 'ðŸ’ª VIG'}</span>
+                                                            <span>{u.attr === 'strength' ? '⚔️ FOR' : u.attr === 'agility' ? '💨 AGI' : u.attr === 'accuracy' ? '🎯 PON' : '💪 VIG'}</span>
                                                             <span className="text-red-300">Faltam {u.diff}</span>
                                                         </div>
                                                     ))}
@@ -234,8 +236,8 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                     <div className="flex flex-wrap gap-1.5 md:gap-2.5 mb-4">
                                         {item.stats && Object.entries(item.stats).map(([stat, val]) => (
                                             <div key={stat} className="flex justify-between items-center bg-[#1a140f] p-1.5 md:p-2 rounded-sm border border-[#3a2a1a] min-w-[70px] md:min-w-[100px]">
-                                                <span className="text-[9px] md:text-xs text-gray-500 font-black uppercase flex items-center gap-1">{(stat === 'strength' ? 'FORCA' : stat === 'agility' ? 'AGILIDADE' : stat === 'accuracy' ? 'PONTARIA' : stat === 'vigor' ? 'VIGOR' : stat === 'defense' ? 'DEFESA' : stat === 'hp_current' ? 'VIDA' : stat === 'energy' ? 'ENERGIA' : stat.toUpperCase())}</span>
-                                                <span className="text-gold font-black text-xs md:text-lg ml-2 md:ml-3">+{val}</span>
+                                                <span className="text-[9px] md:text-xs text-gray-500 font-black uppercase flex items-center gap-1">{(stat === 'strength' ? 'FORÇA' : stat === 'agility' ? 'AGILIDADE' : stat === 'accuracy' ? 'PONTARIA' : stat === 'vigor' ? 'VIGOR' : stat === 'defense' ? 'DEFESA' : stat === 'hp_current' ? 'VIDA' : stat === 'energy' ? 'ENERGIA' : stat.toUpperCase())}</span>
+                                                <span className="text-gold font-black text-xs md:text-lg ml-2 md:ml-3">{formatSigned(Number(val))}</span>
                                             </div>
                                         ))}
                                         {relicEffectsForDisplay(item).map(effect => (
@@ -264,7 +266,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                 <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">
                     {(() => {
                         const itemsWithDetails = invItems.map(invEntry => {
-                            const spec = ITEMS.find(it => it.id === invEntry.item_id)
+                            const spec = getItemById(invEntry.item_id)
                             if (!spec) return null
                             return { ...spec, inventoryId: invEntry.id, is_equipped: invEntry.is_equipped }
                         }).filter(Boolean) as any[]
@@ -352,6 +354,4 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
 
     )
 }
-
-
 
