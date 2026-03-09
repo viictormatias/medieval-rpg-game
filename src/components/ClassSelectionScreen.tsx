@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     createCharacter,
     ClassType,
@@ -25,6 +25,16 @@ const PRESETS: Array<{ id: string; label: string; points: InitialStatAllocation 
     { id: 'bruto', label: 'Bruto', points: { strength: 3, defense: 1, agility: 0, accuracy: 0, vigor: 1 } },
     { id: 'duravel', label: 'Durável', points: { strength: 0, defense: 2, agility: 0, accuracy: 0, vigor: 3 } },
 ]
+
+const CLASS_DEFAULT_PRESET: Record<ClassType, InitialStatAllocation> = {
+    Xerife: { strength: 0, defense: 2, agility: 0, accuracy: 0, vigor: 3 },
+    Pistoleiro: { strength: 0, defense: 0, agility: 2, accuracy: 3, vigor: 0 },
+    Forasteiro: { strength: 1, defense: 1, agility: 1, accuracy: 1, vigor: 1 },
+    Pregador: { strength: 0, defense: 2, agility: 0, accuracy: 1, vigor: 2 },
+    Nativo: { strength: 2, defense: 0, agility: 2, accuracy: 1, vigor: 0 },
+    Vendedor: { strength: 0, defense: 1, agility: 1, accuracy: 2, vigor: 1 },
+    CacadorDeRecompensas: { strength: 2, defense: 0, agility: 1, accuracy: 2, vigor: 0 },
+}
 
 const CLASSES = [
     {
@@ -132,6 +142,21 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
         [selectedClass]
     )
 
+    const applyClassDefaultPreset = (classType: ClassType) => {
+        const preset = CLASS_DEFAULT_PRESET[classType]
+        setAlloc({
+            strength: Number(preset.strength || 0),
+            defense: Number(preset.defense || 0),
+            agility: Number(preset.agility || 0),
+            accuracy: Number(preset.accuracy || 0),
+            vigor: Number(preset.vigor || 0),
+        })
+    }
+
+    useEffect(() => {
+        applyClassDefaultPreset(selectedClass)
+    }, [selectedClass])
+
     const pointsUsed = useMemo(
         () => STAT_KEYS.reduce((sum, key) => sum + alloc[key], 0),
         [alloc]
@@ -166,9 +191,10 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
         setAlloc(prev => {
             const next = { ...prev }
             const current = next[key]
+            const used = STAT_KEYS.reduce((sum, statKey) => sum + next[statKey], 0)
             if (delta > 0) {
-                if (pointsLeft <= 0) return prev
-                if (current >= ONBOARDING_STAT_POINTS) return prev
+                if (used >= ONBOARDING_STAT_POINTS) return prev
+                if (current >= ONBOARDING_MAX_PER_STAT) return prev
                 next[key] = current + 1
                 return next
             }
@@ -329,6 +355,9 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
                                         {pointsLeft} PTS RESTANTES
                                     </span>
                                 </div>
+                                <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
+                                    Distribua exatamente {ONBOARDING_STAT_POINTS} pontos iniciais.
+                                </div>
 
                                 <div className="grid grid-cols-1 gap-2">
                                     {STAT_KEYS.map((key) => (
@@ -345,6 +374,18 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
                                     ))}
                                 </div>
                                 <div className="flex flex-wrap gap-1.5 mt-2">
+                                    <button
+                                        onClick={() => applyClassDefaultPreset(selectedClass)}
+                                        className="px-2 py-1 text-[9px] border border-gold/30 text-gold hover:bg-gold/10 uppercase transition-all font-black"
+                                    >
+                                        Pre-Build da Classe
+                                    </button>
+                                    <button
+                                        onClick={() => setAlloc({ ...EMPTY_ALLOC })}
+                                        className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-white hover:border-white uppercase transition-all font-black"
+                                    >
+                                        Resetar Build
+                                    </button>
                                     {PRESETS.map(p => (
                                         <button key={p.id} onClick={() => applyPreset(p.id)} className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-gold hover:border-gold uppercase transition-all font-black">
                                             {p.label}

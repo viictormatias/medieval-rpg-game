@@ -1,4 +1,4 @@
-﻿// combat.ts - Motor narrativo de duelo no faroeste
+// combat.ts - Motor narrativo de duelo no faroeste
 
 export interface Fighter {
     name: string;
@@ -29,13 +29,6 @@ export interface CombatResult {
     history: NarrativeTurn[];
 }
 
-const TARGETS = [
-    { name: 'Cabeça', chance: 0.05, multiplier: 3.5, gender: 'f', plural: false },
-    { name: 'Peito', chance: 0.45, multiplier: 1.4, gender: 'm', plural: false },
-    { name: 'Barriga', chance: 0.10, multiplier: 1.1, gender: 'f', plural: false },
-    { name: 'Braços', chance: 0.20, multiplier: 0.8, gender: 'm', plural: true },
-    { name: 'Pernas', chance: 0.20, multiplier: 0.7, gender: 'f', plural: true },
-];
 
 const MAX_TURNS = 60;
 
@@ -44,52 +37,154 @@ const NARRATIVE_TEMPLATES = {
         "{attacker} dispara, mas a bala raspa o vento.",
         "{defender} mergulha na terra e escapa do tiro.",
         "O tiro de {weapon} acerta apenas a poeira.",
-        "{attacker} erra o alvo; {defender} mantém a calma."
+        "{attacker} erra o alvo; {defender} mantém a calma.",
+        "A bala de {weapon} passa zunindo ao lado de {defender}.",
+        "{attacker} puxa o gatilho, mas {defender} já se moveu.",
+        "Poeira sobe onde {defender} estava — o tiro chega tarde.",
+        "{defender} abaixa rápido e o projétil passa por cima.",
+        "{attacker} mira apressado e erra feio.",
+        "O disparo ecoa pelo deserto, mas não acerta nada.",
+        "{defender} se joga atrás de uma cobertura no último segundo.",
+        "O estampido do {weapon} é alto, mas o tiro é torto."
     ],
     melee_miss: [
         "{attacker} golpeia com {weapon}, mas erra por pouco.",
         "{defender} recua e a lâmina corta o ar.",
         "{attacker} avança, mas {defender} esquiva no tempo certo.",
-        "O golpe de {weapon} passa no vazio."
-    ],
-    beast_miss: [
-        "{attacker} salta, mas {defender} rola para o lado.",
-        "O bote de {attacker} encontra apenas o ar.",
-        "{attacker} avança soltando um rosnado, mas erra o alvo.",
-        "{defender} se esquiva das garras de {attacker}."
+        "O golpe de {weapon} passa no vazio.",
+        "{attacker} corta o ar — {defender} recua a tempo.",
+        "{defender} se abaixa e {weapon} passa por cima.",
+        "O avanço de {attacker} é rápido, mas {defender} é mais.",
+        "{attacker} tenta um ataque lateral, mas {defender} bloqueia.",
+        "{weapon} assobia no ar sem encontrar carne.",
+        "{defender} desvia com um passo lateral preciso.",
+        "{attacker} investe com fúria, mas perde o equilíbrio.",
+        "O golpe de {attacker} encontra apenas o vento quente do deserto."
     ],
     firearm_hit: [
         "{attacker} acerta {art_def} {bodyPart} com {weapon}.",
         "Tiro certeiro {art_prep} {bodyPart} de {defender}.",
         "{weapon} encontra {art_def} {bodyPart} de {defender}.",
-        "{attacker} perfura {art_def} {bodyPart} com chumbo."
+        "{attacker} perfura {art_def} {bodyPart} com chumbo.",
+        "A bala de {weapon} atinge {art_def} {bodyPart} de {defender}.",
+        "{attacker} puxa o gatilho e acerta {art_def} {bodyPart}.",
+        "O projétil de {weapon} rasga {art_def} {bodyPart} de {defender}.",
+        "Com mira firme, {attacker} alveja {art_def} {bodyPart}.",
+        "Um estalo seco e {defender} sente chumbo {art_prep} {bodyPart}.",
+        "{attacker} dispara sem hesitar — pega {art_prep} {bodyPart}.",
+        "O tiro de {attacker} acerta em cheio {art_def} {bodyPart}.",
+        "Sangue jorra quando a bala atinge {art_def} {bodyPart} de {defender}."
     ],
     melee_hit: [
         "Corte seco! {attacker} atinge {art_def} {bodyPart} com {weapon}.",
         "{attacker} rasga {art_def} {bodyPart} de {defender}.",
         "{weapon} corta {art_def} {bodyPart} de {defender}.",
-        "{attacker} conecta um golpe {art_prep} {bodyPart}."
-    ],
-    beast_hit: [
-        "{attacker} crava as presas {art_prep} {bodyPart} de {defender}!",
-        "{attacker} dilacera {art_def} {bodyPart} de {defender} com as garras.",
-        "O bote atinge {art_def} {bodyPart}! {attacker} morde com força.",
-        "{attacker} atinge {art_def} {bodyPart} em um salto furioso."
+        "{attacker} conecta um golpe {art_prep} {bodyPart}.",
+        "{attacker} crava {weapon} {art_prep} {bodyPart} de {defender}.",
+        "O fio de {weapon} morde {art_def} {bodyPart} de {defender}.",
+        "{attacker} desfere um golpe pesado {art_prep} {bodyPart}.",
+        "O aço de {weapon} encontra {art_def} {bodyPart} de {defender}.",
+        "{attacker} avança e acerta {art_def} {bodyPart} com {weapon}.",
+        "Com um movimento rápido, {attacker} fere {art_def} {bodyPart}.",
+        "{weapon} arranha {art_def} {bodyPart} — {defender} grunhe de dor.",
+        "{attacker} gira o corpo e conecta {weapon} {art_prep} {bodyPart}."
     ],
     firearm_crit: [
-        "NO OLHO! {attacker} acerta {art_def} {bodyPart} com precisão fatal!",
-        "TIRO MORTAL! {weapon} explode {art_def} {bodyPart}!",
-        "{attacker} finaliza com chumbo {art_prep} {bodyPart}!"
+        "TIRO BRUTAL! {weapon} destrói {art_def} {bodyPart} de {defender}!",
+        "PRECISÃO MORTAL! {attacker} acerta em cheio {art_def} {bodyPart}!",
+        "BANG! O tiro {art_prep} {bodyPart} é devastador!",
+        "QUE PONTARIA! {attacker} crava chumbo {art_prep} {bodyPart} de {defender}!",
+        "IMPACTO BRUTAL! A bala entra {art_prep} {bodyPart} sem piedade!",
+        "O tiro de {weapon} atinge {art_def} {bodyPart} com força absurda!",
+        "DANO CRÍTICO! {attacker} perfura {art_def} {bodyPart} com {weapon}!",
+        "SEM CHANCE! {defender} recebe chumbo em cheio {art_prep} {bodyPart}!",
+        "O estampido ecoa e {defender} cambaleia — tiro {art_prep} {bodyPart}!",
+        "MIRA CIRÚRGICA! {attacker} acerta {art_def} {bodyPart} de {defender}!"
     ],
     melee_crit: [
-        "GOLPE LETAL! {attacker} crava {weapon} {art_prep} {bodyPart}!",
+        "GOLPE DEVASTADOR! {attacker} crava {weapon} {art_prep} {bodyPart}!",
         "VIOLÊNCIA PURA! O corte {art_prep} {bodyPart} é profundo!",
-        "{attacker} dilacera {art_def} {bodyPart} de {defender}!"
+        "{attacker} dilacera {art_def} {bodyPart} de {defender}!",
+        "CORTE BRUTAL! {weapon} abre {art_def} {bodyPart} de {defender}!",
+        "IMPACTO FEROZ! {attacker} atinge {art_def} {bodyPart} com toda a força!",
+        "{attacker} gira {weapon} e rasga {art_def} {bodyPart} de {defender}!",
+        "GOLPE CERTEIRO! O aço afunda {art_prep} {bodyPart} de {defender}!",
+        "SEM PIEDADE! {attacker} retalha {art_def} {bodyPart} com {weapon}!",
+        "DANO CRÍTICO! {weapon} abre um corte profundo {art_prep} {bodyPart}!",
+        "O golpe de {attacker} {art_prep} {bodyPart} faz {defender} cambalear!"
     ],
-    beast_crit: [
-        "ATAQUE VISCERAL! {attacker} estraçalha {art_def} {bodyPart}!",
-        "MORDIDA FATAL! {attacker} trava a mandíbula {art_prep} {bodyPart}!",
-        "{attacker} derruba {defender} e ataca {art_def} {bodyPart} com fúria!"
+    firearm_graze: [
+        "TIRO DE RASPÃO! Pegou {art_prep} {bodyPart}.",
+        "O projétil arranha {art_def} {bodyPart} de {defender}.",
+        "A bala raspa {art_def} {bodyPart} — corte superficial.",
+        "O tiro passa de raspão {art_prep} {bodyPart} de {defender}.",
+        "{attacker} acerta de leve {art_def} {bodyPart}.",
+        "Quase errou! Pegou {art_def} {bodyPart} de raspão."
+    ],
+    melee_graze: [
+        "CORTE SUPERFICIAL! Atingiu {art_def} {bodyPart}.",
+        "{weapon} apenas arranha {art_def} {bodyPart} de {defender}.",
+        "O golpe pega {art_def} {bodyPart} de raspão.",
+        "{attacker} roça {art_def} {bodyPart} de {defender} com {weapon}.",
+        "Corte raso {art_prep} {bodyPart} — pouco dano.",
+        "O fio de {weapon} desliza {art_prep} {bodyPart} sem ir fundo."
+    ],
+    narrative_firearm: [
+        "{attacker} gira o tambor do revólver.",
+        "{attacker} ajusta o chapéu e foca em {defender}.",
+        "{attacker} mantém a mão firme no coldre.",
+        "{attacker} cospe de lado e encara o alvo.",
+        "{attacker} sopra a fumaça do cano de {weapon}.",
+        "{attacker} ergue {weapon} devagar, mirando com calma.",
+        "{attacker} dá um passo para o lado, buscando ângulo.",
+        "Os olhos de {attacker} se estreitam sobre {defender}.",
+        "O sol bate no cano de {weapon} enquanto {attacker} mira.",
+        "{attacker} recarrega {weapon} com movimentos precisos."
+    ],
+    narrative_melee: [
+        "{attacker} testa o fio da lâmina.",
+        "{attacker} gira {weapon} na mão.",
+        "{attacker} respira fundo, medindo o bote.",
+        "{attacker} encara {defender} com sangue nos olhos.",
+        "{attacker} passa o polegar no fio de {weapon}.",
+        "{attacker} faz um gesto provocador com {weapon}.",
+        "{attacker} circula {defender} como um predador.",
+        "O suor escorre pelo rosto de {attacker} enquanto segura {weapon}.",
+        "{attacker} troca {weapon} de mão rapidamente.",
+        "{attacker} abaixa o corpo, pronto para investir."
+    ],
+    // ===== FRASES DE FINALIZAÇÃO — SÓ APARECEM NO GOLPE FATAL =====
+    finishing_firearm: [
+        "💀 ACABOU! {attacker} mete bala {art_prep} {bodyPart} e {defender} vai pro chão de vez!",
+        "💀 {attacker} dá o tiro da misericórdia {art_prep} {bodyPart}. Boa noite, {defender}.",
+        "💀 PÁ! Chumbo {art_prep} {bodyPart}! {defender} roda e cai feito saco de batata!",
+        "💀 {defender} olha pro céu pela última vez. {attacker} não perdoou — bala {art_prep} {bodyPart}.",
+        "💀 {attacker} guarda o {weapon} no coldre. Não precisa mais. {defender} tá no chão.",
+        "💀 E ERA ISSO! {attacker} resolve o duelo com um tiro seco {art_prep} {bodyPart}!",
+        "💀 {defender} tropeça, cambaleia... e desaba. O último tiro de {attacker} foi cirúrgico.",
+        "💀 {attacker} sopra a fumaça do cano. {defender} não vai reclamar desse tiro.",
+        "💀 A poeira baixa e {defender} tá estirado no chão. Chumbo quente {art_prep} {bodyPart}.",
+        "💀 BANG! {defender} nem viu o que pegou! {attacker} acerta {art_def} {bodyPart} e apaga a luz!",
+        "💀 O silêncio toma conta. {attacker} olha pro corpo de {defender}. Duelo encerrado.",
+        "💀 {attacker} cospe no chão e vira as costas. {defender} ficou pra trás — de vez.",
+        "💀 Esse foi o último suspiro de {defender}. {attacker} não errou quando importava.",
+        "💀 Os abutres já tão circulando. {attacker} mandou {defender} pro outro lado com bala {art_prep} {bodyPart}."
+    ],
+    finishing_melee: [
+        "💀 ACABOU! {attacker} enfia {weapon} {art_prep} {bodyPart} e {defender} desmorona!",
+        "💀 {attacker} puxa {weapon} de volta ensanguentado. {defender} já era.",
+        "💀 QUE BRUTALIDADE! O corte {art_prep} {bodyPart} derruba {defender} de uma vez!",
+        "💀 {defender} cai de joelhos... e depois de cara na terra. {attacker} não teve dó.",
+        "💀 {attacker} limpa {weapon} na bota. {defender} não vai mais precisar de médico.",
+        "💀 E PRONTO! {attacker} resolve na lâmina! Golpe fatal {art_prep} {bodyPart}!",
+        "💀 {defender} tenta se levantar, mas não rola. O golpe de {attacker} foi demais.",
+        "💀 Sangue na areia. {attacker} fica de pé, {defender} não.",
+        "💀 {attacker} dá um passo atrás e observa {defender} tombar. Sem pressa, sem remorso.",
+        "💀 A lâmina de {weapon} brilha vermelha. {defender} tá fora do jogo.",
+        "💀 {defender} nem gritou — o golpe {art_prep} {bodyPart} foi rápido demais.",
+        "💀 {attacker} guarda {weapon} e tira o chapéu. Até que {defender} durou bastante.",
+        "💀 Os urubus já tão de olho. {attacker} mandou {defender} dormir o sono eterno com {weapon}.",
+        "💀 ERÁ ISSO! {attacker} crava {weapon} {art_prep} {bodyPart} e o duelo acaba aqui!"
     ]
 };
 
@@ -102,14 +197,31 @@ function interpolate(template: string, vars: any) {
     return template.replace(/{(\w+)}/g, (match, key) => vars[key] || match);
 }
 
-function getRandomTarget() {
-    const random = Math.random();
-    let cumulative = 0;
-    for (const target of TARGETS) {
-        cumulative += target.chance;
-        if (random <= cumulative) return target;
+function pickRandom<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getRandomTarget(accuracy: number, agility: number) {
+    const advantage = Math.max(0, accuracy - agility);
+    const critBonus = Math.floor(advantage / 5) * 5; 
+
+    const dynamicTargets = [
+        { name: 'Cabeça', multiplier: 2.0, weight: 10 + critBonus, gender: 'f', plural: false },
+        { name: 'Peito', multiplier: 1.2, weight: 30 + critBonus, gender: 'm', plural: false },
+        { name: 'Braço', multiplier: 0.8, weight: 20, gender: 'm', plural: false },
+        { name: 'Perna', multiplier: 0.8, weight: 20, gender: 'f', plural: false },
+        { name: 'Mão', multiplier: 0.5, weight: 10, gender: 'f', plural: false },
+        { name: 'Pé', multiplier: 0.5, weight: 10, gender: 'm', plural: false },
+    ];
+
+    const totalWeight = dynamicTargets.reduce((sum, t) => sum + t.weight, 0);
+    let random = Math.random() * totalWeight;
+
+    for (const target of dynamicTargets) {
+        if (random < target.weight) return target;
+        random -= target.weight;
     }
-    return TARGETS[TARGETS.length - 1];
+    return dynamicTargets[0];
 }
 
 function isFirearm(weaponName: string): boolean {
@@ -118,25 +230,16 @@ function isFirearm(weaponName: string): boolean {
     return !meleeKeywords.some(kw => name.includes(kw));
 }
 
-function isBeast(name: string): boolean {
-    const beasts = ['coiote', 'lobo', 'urso', 'serpente', 'puma', 'jacaré', 'cão'];
-    const lower = name.toLowerCase();
-    return beasts.some(b => lower.includes(b));
-}
-
 export function simulateCombat(fighter1: Fighter, fighter2: Fighter): CombatResult {
-    const f1IsBeast = isBeast(fighter1.name);
-    const f2IsBeast = isBeast(fighter2.name);
-
     const f1 = {
         ...fighter1,
         name: capitalize(fighter1.name),
-        weaponName: f1IsBeast ? 'garras e presas' : (fighter1.weaponName || 'revólver')
+        weaponName: fighter1.weaponName || 'revólver'
     };
     const f2 = {
         ...fighter2,
         name: capitalize(fighter2.name),
-        weaponName: f2IsBeast ? 'garras e presas' : (fighter2.weaponName || 'faca')
+        weaponName: fighter2.weaponName || 'faca'
     };
 
     let attacker = f1.agility >= f2.agility ? f1 : f2;
@@ -150,111 +253,71 @@ export function simulateCombat(fighter1: Fighter, fighter2: Fighter): CombatResu
         let isCritical = false;
         let narrative = "";
 
-        const attackerIsBeast = isBeast(attacker.name);
-
         let hitChance = 55 + (attacker.accuracy - defender.agility);
         hitChance = Math.max(20, Math.min(95, hitChance));
 
-        const target = getRandomTarget();
-        const hasGun = !attackerIsBeast && isFirearm(attacker.weaponName || '');
+        const target = getRandomTarget(attacker.accuracy, defender.agility);
+        const hasGun = isFirearm(attacker.weaponName || '');
 
         // Gramática
         const artDef = target.gender === 'f' ? (target.plural ? 'as' : 'a') : (target.plural ? 'os' : 'o');
         const artPrep = target.gender === 'f' ? (target.plural ? 'nas' : 'na') : (target.plural ? 'nos' : 'no');
 
+        const templateVars = {
+            attacker: attacker.name,
+            defender: defender.name,
+            weapon: attacker.weaponName,
+            bodyPart: target.name.toLowerCase(),
+            art_def: artDef,
+            art_prep: artPrep,
+            damage: 0
+        };
+
         const isNarrativeAction = Math.random() < 0.12;
 
         if (isNarrativeAction) {
-            let actions;
-            if (attackerIsBeast) {
-                actions = [
-                    "{attacker} rosna baixo, mostrando as presas.",
-                    "{attacker} circula {defender}, procurando uma abertura.",
-                    "{attacker} solta um uivo curto e agressivo.",
-                    "{attacker} arranha o chão, preparando o bote."
-                ];
-            } else {
-                actions = hasGun ? [
-                    "{attacker} gira o tambor do revólver.",
-                    "{attacker} ajusta o chapéu e foca em {defender}.",
-                    "{attacker} mantém a mão firme no coldre.",
-                    "{attacker} cospe de lado e encara o alvo."
-                ] : [
-                    "{attacker} testa o fio da lâmina.",
-                    "{attacker} gira {weapon} na mão.",
-                    "{attacker} respira fundo, medindo o bote.",
-                    "{attacker} encara {defender} com sangue nos olhos."
-                ];
-            }
-            const action = actions[Math.floor(Math.random() * actions.length)];
-            narrative = interpolate(action, { attacker: attacker.name, defender: defender.name, weapon: attacker.weaponName });
+            const actions = hasGun ? NARRATIVE_TEMPLATES.narrative_firearm : NARRATIVE_TEMPLATES.narrative_melee;
+            narrative = interpolate(pickRandom(actions), templateVars);
         } else if (Math.random() * 100 > hitChance) {
             isMiss = true;
-            let templates;
-            if (attackerIsBeast) {
-                templates = NARRATIVE_TEMPLATES.beast_miss;
-            } else {
-                templates = hasGun ? NARRATIVE_TEMPLATES.firearm_miss : NARRATIVE_TEMPLATES.melee_miss;
-            }
-
-            narrative = interpolate(templates[Math.floor(Math.random() * templates.length)], {
-                attacker: attacker.name,
-                defender: defender.name,
-                weapon: attacker.weaponName,
-                bodyPart: target.name.toLowerCase(),
-                art_def: artDef,
-                art_prep: artPrep
-            });
+            const templates = hasGun ? NARRATIVE_TEMPLATES.firearm_miss : NARRATIVE_TEMPLATES.melee_miss;
+            narrative = interpolate(pickRandom(templates), templateVars);
         } else {
             const rawBase = attacker.minDamage + Math.random() * (attacker.maxDamage - attacker.minDamage);
-            const defenderDefense = defender.defense * 0.15;
-            let finalDamage = Math.max(5, rawBase - defenderDefense);
+            
+            // Defesa Multiplicativa: Dano = Dano Bruto * (100 / (100 + Defesa))
+            const rawDefense = Math.max(0, defender.defense);
+            let finalDamage = Math.max(5, rawBase * (100 / (100 + rawDefense)));
 
             const isGraze = Math.random() < 0.18;
             if (isGraze) {
                 finalDamage = Math.floor(finalDamage * 0.5);
                 damage = finalDamage;
-                let grazeMsg;
-                if (attackerIsBeast) {
-                    grazeMsg = "{attacker} arranha {art_def} {bodyPart} de raspão.";
-                } else {
-                    grazeMsg = hasGun ? "TIRO DE RASPÃO! Pegou {art_prep} {bodyPart}." : "CORTE SUPERFICIAL! Atingiu {art_def} {bodyPart}.";
-                }
-
-                narrative = interpolate(grazeMsg, {
-                    attacker: attacker.name,
-                    defender: defender.name,
-                    bodyPart: target.name.toLowerCase(),
-                    damage: finalDamage,
-                    art_def: artDef,
-                    art_prep: artPrep
-                });
                 defender.hp = Math.max(0, defender.hp - damage);
+                templateVars.damage = damage;
+
+                const grazeTemplates = hasGun ? NARRATIVE_TEMPLATES.firearm_graze : NARRATIVE_TEMPLATES.melee_graze;
+                narrative = interpolate(pickRandom(grazeTemplates), templateVars);
             } else {
                 damage = Math.floor(finalDamage * target.multiplier);
-                isCritical = target.name === 'Cabeça';
+                isCritical = target.name === 'Cabeça' || target.name === 'Peito';
                 defender.hp = Math.max(0, defender.hp - damage);
+                templateVars.damage = damage;
 
-                let templates;
-                if (attackerIsBeast) {
-                    templates = isCritical ? NARRATIVE_TEMPLATES.beast_crit : NARRATIVE_TEMPLATES.beast_hit;
+                // Se o defensor morreu, usa frase de FINALIZAÇÃO
+                if (defender.hp <= 0) {
+                    const finishTemplates = hasGun ? NARRATIVE_TEMPLATES.finishing_firearm : NARRATIVE_TEMPLATES.finishing_melee;
+                    narrative = interpolate(pickRandom(finishTemplates), templateVars);
                 } else {
+                    // Golpe normal ou crítico (mas NÃO final)
+                    let templates;
                     if (isCritical) {
                         templates = hasGun ? NARRATIVE_TEMPLATES.firearm_crit : NARRATIVE_TEMPLATES.melee_crit;
                     } else {
                         templates = hasGun ? NARRATIVE_TEMPLATES.firearm_hit : NARRATIVE_TEMPLATES.melee_hit;
                     }
+                    narrative = interpolate(pickRandom(templates), templateVars);
                 }
-
-                narrative = interpolate(templates[Math.floor(Math.random() * templates.length)], {
-                    attacker: attacker.name,
-                    defender: defender.name,
-                    weapon: attacker.weaponName,
-                    bodyPart: target.name.toLowerCase(),
-                    damage: damage,
-                    art_def: artDef,
-                    art_prep: artPrep
-                });
             }
         }
 

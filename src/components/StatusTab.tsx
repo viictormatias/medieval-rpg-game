@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { Profile, getUserInventory } from '@/lib/gameActions'
@@ -24,11 +24,11 @@ const CLASS_PORTRAITS: Record<string, string> = {
 
 /* ─── Atributos "base" do personagem ─── */
 const ATTRIBUTES = [
-    { key: 'strength', label: 'Força', icon: 'F', color: '#ef4444', desc: 'Aumenta o dano causado nos seus disparos.' },
-    { key: 'defense', label: 'Defesa', icon: 'D', color: '#60a5fa', desc: 'Sua resistência a ferimentos.' },
-    { key: 'agility', label: 'Agilidade', icon: 'A', color: '#4ade80', desc: 'Sua destreza e chance de esquiva.' },
-    { key: 'accuracy', label: 'Pontaria', icon: 'P', color: '#f97316', desc: 'Precisão crucial para acertar o alvo.' },
-    { key: 'vigor', label: 'Vigor', icon: 'V', color: '#a855f7', desc: 'Sua constituição física e vitalidade total.' },
+    { key: 'strength', label: 'Força', icon: '⚔️', color: '#ef4444', desc: 'Aumenta o dano causado nos seus disparos.' },
+    { key: 'defense', label: 'Defesa', icon: '🛡️', color: '#60a5fa', desc: 'Sua resistência a ferimentos.' },
+    { key: 'agility', label: 'Agilidade', icon: '💨', color: '#4ade80', desc: 'Sua destreza e chance de esquiva.' },
+    { key: 'accuracy', label: 'Pontaria', icon: '🎯', color: '#f97316', desc: 'Precisão crucial para acertar o alvo.' },
+    { key: 'vigor', label: 'Vigor', icon: '💪', color: '#a855f7', desc: 'Sua vitalidade total. Cada ponto concede +10 de Vida máxima.' },
 ] as const
 
 function buildTrend(p: Profile): { label: string; color: string } {
@@ -62,7 +62,7 @@ function Bar({ value, max, color, height = 8 }: { value: number; max: number; co
 }
 
 /* ─── Stat row no painel de combate ─── */
-function StatRow({ label, value, positive }: { label: string; value: string | number; positive?: boolean }) {
+function StatRow({ label, value, base, bonus, positive, icon }: { label: string; value: string | number; base?: number; bonus?: number; positive?: boolean; icon?: string }) {
     const isNum = typeof value === 'number'
     const color = positive === undefined ? '#c9a84c'
         : isNum && (value as number) >= 0 ? '#4ade80' : '#f87171'
@@ -71,8 +71,17 @@ function StatRow({ label, value, positive }: { label: string; value: string | nu
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             borderBottom: '1px solid #1a1a1a', paddingBottom: 8, marginBottom: 8
         }}>
-            <span style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', fontWeight: 900 }}>{label}</span>
-            <span style={{ fontSize: 16, fontFamily: 'monospace', fontWeight: 900, color }}>{value}</span>
+            <span style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
+                {label}
+            </span>
+            <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                <span style={{ fontSize: 16, fontFamily: 'monospace', fontWeight: 900, color }}>{value}</span>
+                <div className="flex items-center text-[10px] font-bold text-gray-500 gap-1">
+                    {base !== undefined && <span>({base})</span>}
+                    {bonus !== undefined && bonus > 0 && <span>(+{bonus})</span>}
+                </div>
+            </div>
         </div>
     )
 }
@@ -178,28 +187,35 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                 </div>
             </div>
 
-            {hasPending ? (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-xl western-border bg-black/90 backdrop-blur-md border-gold p-4 flex items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.9)] animate-in slide-in-from-bottom duration-500 rounded-sm">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-gold uppercase font-black tracking-[0.2em]">Confirmar Atributos?</span>
-                        <span className="text-white font-bold text-sm">{totalPending} ponto(s) aplicados</span>
-                    </div>
-                    <div className="flex gap-3">
-                        <button onClick={handleCancel} disabled={saving} className="px-4 py-2 border border-red-900/50 text-red-500 text-[10px] font-black uppercase hover:bg-red-950/30 transition-colors">Descartar</button>
-                        <button onClick={handleConfirm} disabled={saving} className="px-6 py-2 bg-gold text-black text-[11px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-lg">{saving ? 'Salvando...' : 'Confirmar'}</button>
-                    </div>
-                </div>
-            ) : profile.stat_points_available > 0 && (
-                <div className="relative western-border p-4 md:p-6 text-center bg-gold/10 border-gold shadow-[0_0_30px_rgba(242,185,13,0.2)] animate-pulse overflow-hidden group">
+            {profile.stat_points_available > 0 && (
+                <div className={`relative western-border p-4 md:p-6 text-center border-gold shadow-[0_0_30px_rgba(242,185,13,0.2)] overflow-hidden group transition-all duration-500 ${hasPending ? 'bg-gold/5 opacity-80' : 'bg-gold/10 animate-pulse'}`}>
                     <div className="absolute top-0 left-0 w-full h-1 bg-gold"></div>
                     <div className="absolute -top-10 -left-10 w-20 h-20 bg-gold/20 rotate-45 blur-xl group-hover:left-[110%] transition-all duration-1000"></div>
+                    
                     <span className="text-xl md:text-2xl font-black text-gold uppercase tracking-[0.2em] block mb-2">
-                        ✨ EVOLUÇÃO DISPONÍVEL!
+                        {hasPending ? '✨ DISTRIBUINDO PONTOS' : '✨ EVOLUÇÃO DISPONÍVEL!'}
                     </span>
+                    
                     <span className="text-xs md:text-sm font-bold text-white uppercase tracking-widest">
-                        Você tem {profile.stat_points_available} ponto(s) para distribuir e se tornar mais forte.
+                        {hasPending 
+                            ? `Você ainda tem ${profile.stat_points_available - totalPending} ponto(s) para distribuir.`
+                            : `Você tem ${profile.stat_points_available} ponto(s) para distribuir e se tornar mais forte.`
+                        }
                     </span>
                     <div className="absolute bottom-0 left-0 w-full h-1 bg-gold"></div>
+                </div>
+            )}
+
+            {hasPending && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-xl western-border bg-black/95 backdrop-blur-md border-gold p-4 flex items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.9)] animate-in fade-in slide-in-from-bottom duration-500 rounded-sm">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-gold uppercase font-black tracking-[0.2em]">Confirmar Atributos?</span>
+                        <span className="text-white font-bold text-sm tracking-widest">{totalPending} ponto(s) aplicados</span>
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={handleCancel} disabled={saving} className="px-4 py-2 border border-red-900/50 text-red-500 text-[10px] font-black uppercase hover:bg-red-950/30 transition-all active:scale-95">Descartar</button>
+                        <button onClick={handleConfirm} disabled={saving} className="px-6 py-2 bg-gold text-black text-[11px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-lg border-2 border-black/20">{saving ? 'Salvando...' : 'Confirmar'}</button>
+                    </div>
                 </div>
             )}
 
@@ -223,10 +239,31 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                             Dados de Duelo
                         </div>
                         <div className="flex flex-col gap-0.5">
-                            <StatRow label="HP Máximo" value={profile.hp_max + (pending.vigor * 10)} positive={pending.vigor > 0} />
-                            <StatRow label="Energia" value={`${profile.energy} / 100`} />
-                            <StatRow label="Pontaria" value={(profile.accuracy + (souls?.bonuses.accuracy || 0))} positive={pending.accuracy > 0} />
-                            <StatRow label="Defesa" value={(profile.defense + (souls?.bonuses.defense || 0))} positive={pending.defense > 0} />
+                            <StatRow 
+                                label="HP Máximo" 
+                                value={profile.hp_max + (pending.vigor * 10) + (souls?.hpBonus || 0)} 
+                                base={profile.hp_max + (pending.vigor * 10)} 
+                                bonus={souls?.hpBonus || 0}
+                                positive={pending.vigor > 0 || (souls?.hpBonus || 0) > 0} 
+                                icon="❤️" 
+                            />
+                            <StatRow label="Energia" value={`${profile.energy} / 100`} icon="⚡" />
+                            <StatRow 
+                                label="Pontaria" 
+                                value={(profile.accuracy + (pending.accuracy || 0) + (souls?.bonuses.accuracy || 0))} 
+                                base={profile.accuracy + (pending.accuracy || 0)}
+                                bonus={souls?.bonuses.accuracy || 0}
+                                positive={pending.accuracy > 0 || (souls?.bonuses.accuracy || 0) > 0} 
+                                icon="🎯" 
+                            />
+                            <StatRow 
+                                label="Defesa" 
+                                value={(profile.defense + (pending.defense || 0) + (souls?.bonuses.defense || 0))} 
+                                base={profile.defense + (pending.defense || 0)}
+                                bonus={souls?.bonuses.defense || 0}
+                                positive={pending.defense > 0 || (souls?.bonuses.defense || 0) > 0} 
+                                icon="🛡️" 
+                            />
                         </div>
 
                         <div className="mt-3 pt-3 border-top border-[#c9a84c33]">
@@ -253,10 +290,24 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                                     <div className="flex justify-between items-baseline mb-2">
                                         <span className="text-base md:text-lg font-black uppercase text-[#e5e7eb] tracking-[0.1em]">{label}</span>
                                         <div className="flex items-baseline gap-2">
-                                            {pendingValue > 0 && <span className="text-xs font-black text-gold animate-bounce">+{pendingValue}</span>}
-                                            <span className="text-2xl md:text-3xl font-black font-mono transition-all" style={{ color: pendingValue > 0 ? '#d4af37' : color, textShadow: `0 0 10px ${pendingValue > 0 ? '#d4af3744' : color + '44'}` }}>
-                                                {totalValue}
-                                            </span>
+                                            {pendingValue > 0 && (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xs font-black text-gold animate-bounce">+{pendingValue}</span>
+                                                    {key === 'vigor' && (
+                                                        <span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter mt-[-4px]">+{pendingValue * 10} HP</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-2xl md:text-3xl font-black font-mono transition-all" style={{ color: pendingValue > 0 ? '#d4af37' : color, textShadow: `0 0 10px ${pendingValue > 0 ? '#d4af3744' : color + '44'}` }}>
+                                                    {totalValue + (souls?.bonuses[key as keyof typeof souls.bonuses] || 0) + (key === 'vigor' ? (souls?.hpBonus || 0) : 0)}
+                                                </span>
+                                                <div className="flex items-center text-[10px] font-bold text-gray-500 gap-1 mt-[-4px]">
+                                                    <span>({totalValue})</span>
+                                                    {(souls?.bonuses[key as keyof typeof souls.bonuses] || 0) > 0 && <span>(+{souls?.bonuses[key as keyof typeof souls.bonuses]})</span>}
+                                                    {key === 'vigor' && (souls?.hpBonus || 0) > 0 && <span>(+{souls?.hpBonus} HP EM ITEM)</span>}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex gap-0.5 md:gap-1 mb-2 md:mb-2.5 overflow-hidden">

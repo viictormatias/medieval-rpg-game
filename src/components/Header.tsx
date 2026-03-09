@@ -129,8 +129,8 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
             {/* Stitching effect at bottom of header */}
             <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ borderBottom: '1px dashed rgba(212, 175, 55, 0.2)' }}></div>
 
-            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 px-4 py-2 md:py-3">
-                <div className="flex flex-row items-center justify-between w-full md:w-auto gap-4 md:gap-6">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-2 md:gap-4 px-4 py-2 md:py-3">
+                <div className="flex flex-row items-center justify-between w-full md:flex-1 md:min-w-0 gap-4 md:gap-6">
                     <div className="flex-shrink-0">
                         <img
                             src="/logo.png"
@@ -139,15 +139,14 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                         />
                     </div>
 
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div className="relative group">
+                    <div className="flex items-center gap-2 md:gap-3 flex-wrap lg:flex-nowrap min-w-0">
+                        <div className="relative group shrink-0 md:scale-110 md:origin-left">
                             <CharacterPortrait
                                 src={CLASS_PORTRAITS[profile.class] || null}
                                 fallbackEmoji="🤠"
                                 borderColor="gold"
-                                size="xs"
-                                name={profile.username}
-                                className="md:w-12 md:h-12"
+                                size="sm"
+                                className="!gap-0"
                             />
                             <button
                                 onClick={() => supabase.auth.signOut()}
@@ -158,7 +157,7 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                             </button>
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 pr-1 flex-1">
                             <h1 className="text-sm md:text-base font-bold text-[#d9c5b2] leading-tight tracking-wide font-serif truncate">
                                 {profile.username}
                             </h1>
@@ -185,13 +184,13 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
 
                         {/* Persistent Job Tracker (Enhanced Vertical) */}
                         {activeJob && (
-                            <div className="ml-2 hidden lg:flex flex-col justify-center items-center bg-[rgba(242,185,13,0.04)] border border-[#d4af37]/30 px-3 py-2 min-h-[48px] rounded-sm shadow-2xl animate-in slide-in-from-right duration-500 relative overflow-hidden group">
+                            <div className="hidden lg:flex flex-col justify-center items-center bg-[rgba(242,185,13,0.04)] border border-[#d4af37]/30 px-3 py-2 min-h-[48px] rounded-sm shadow-2xl animate-in slide-in-from-right duration-500 relative overflow-hidden group shrink max-w-[180px] xl:max-w-[240px] ml-0 xl:ml-2">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-0.5 self-start">Em Missão:</span>
                                 <div className="flex items-center gap-3 w-full">
-                                    <span className="text-[10px] font-bold text-[#d9c5b2] font-serif uppercase tracking-tight whitespace-nowrap">{activeJob.title}</span>
+                                    <span className="text-[10px] font-bold text-[#d9c5b2] font-serif uppercase tracking-tight truncate min-w-0">{activeJob.title}</span>
                                     <div className="w-px h-3 bg-[#d4af37]/20" />
                                     {timeLeft > 0 ? (
-                                        <span className="text-xs font-mono font-black text-gold flex items-center gap-1.5">
+                                        <span className="text-xs font-mono font-black text-gold flex items-center gap-1.5 shrink-0">
                                             <span className="animate-pulse text-[10px]">⌛</span> {Math.floor(timeLeft / 60)}m
                                         </span>
                                     ) : profile.job_finish_at && new Date(profile.job_finish_at).getTime() <= Date.now() ? (
@@ -210,7 +209,7 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-1 md:gap-2 w-full md:w-96 pb-2 md:pb-0">
+                <div className="flex flex-col gap-1 md:gap-2 w-full md:w-96 md:flex-shrink-0 pb-2 md:pb-0">
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] md:text-[12px] font-bold text-red-500 w-10 md:w-12 text-right uppercase tracking-tight flex-shrink-0">Vida</span>
                         <div className="flex-1">

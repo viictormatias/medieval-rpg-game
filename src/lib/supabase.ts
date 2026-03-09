@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
 
-console.log('[DEBUG-SUPABASE] URL exists:', !!supabaseUrl, 'Key exists:', !!supabaseAnonKey);
+
 
 // Build-safe and Robust initialization:
 export const isConfigValid = supabaseUrl.startsWith('http') && supabaseAnonKey.length > 0

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface LightboxProps {
     src: string | null
@@ -11,6 +12,14 @@ interface LightboxProps {
 }
 
 export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxProps) {
+    const [mounted, setMounted] = useState(false)
+
+    // Garante que o portal só é renderizado no cliente
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    // Bloqueia o scroll do body enquanto o lightbox estiver aberto
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden'
@@ -22,11 +31,11 @@ export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxP
         }
     }, [isOpen])
 
-    if (!isOpen || !src) return null
+    if (!isOpen || !src || !mounted) return null
 
-    return (
+    const content = (
         <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md transition-all duration-300 animate-in fade-in"
+            className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md transition-all duration-300 animate-in fade-in"
             onClick={onClose}
         >
             <button
@@ -95,4 +104,6 @@ export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxP
             </div>
         </div>
     )
+
+    return createPortal(content, document.body)
 }

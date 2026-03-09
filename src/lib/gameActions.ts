@@ -3,7 +3,8 @@ import { Item, ITEMS, ItemRarity } from './items'
 
 const MAX_ENERGY = 100
 const ENERGY_REGEN_PER_TICK = 10
-const ENERGY_REGEN_INTERVAL_SECONDS = 60
+// 10 ticks to fill 0->100. 360s per tick = 3600s (1 hour) total.
+const ENERGY_REGEN_INTERVAL_SECONDS = 360
 
 export interface Profile {
     id: string
@@ -326,6 +327,40 @@ export async function buyItem(profileId: string, itemId: string, price: number):
     return !invError
 }
 
+export async function sellItem(profileId: string, inventoryId: string, sellPrice: number): Promise<boolean> {
+    // 1. Verificar se o item existe e pertence ao jogador
+    const { data: item } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('id', inventoryId)
+        .eq('profile_id', profileId)
+        .single()
+        
+    if (!item || item.is_equipped) return false
+
+    // 2. Excluir o item do inventário
+    const { data: deleted, error: delError } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', inventoryId)
+        .eq('profile_id', profileId)
+        .select()
+
+    // Se houver erro ou nada for deletado, interrompe para evitar venda infinita
+    if (delError || !deleted || deleted.length === 0) return false
+
+    // 3. Adicionar Gold ao jogador
+    const { data: profile } = await supabase.from('profiles').select('gold').eq('id', profileId).single()
+    if (!profile) return false
+
+    const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ gold: (profile.gold || 0) + sellPrice })
+        .eq('id', profileId)
+
+    return !updateError
+}
+
 export async function toggleEquip(profileId: string, inventoryId: string): Promise<boolean> {
     // 1. Pegar o item atual
     const { data: item } = await supabase.from('inventory').select('*').eq('id', inventoryId).single()
@@ -341,14 +376,22 @@ export async function toggleEquip(profileId: string, inventoryId: string): Promi
         const itemSpec = ITEMS.find(it => it.id === item.item_id)
         if (!itemSpec) return false
 
-        // Buscar todos os itens do inventário para desequipar o mesmo tipo
+        // Buscar todos os itens do inventário para o perfil que estão atualmente equipados
         const { data: fullInv } = await supabase.from('inventory').select('*').eq('profile_id', profileId).eq('is_equipped', true)
 
         if (fullInv) {
-            for (const invEntry of fullInv) {
+            const equippedOfSameType = fullInv.filter((invEntry: any) => {
                 const spec = ITEMS.find(it => it.id === invEntry.item_id)
-                if (spec && spec.type === itemSpec.type) {
-                    await supabase.from('inventory').update({ is_equipped: false }).eq('id', invEntry.id)
+                return spec && spec.type === itemSpec.type
+            })
+
+            const maxEquip = itemSpec.type === 'relic' ? 2 : 1;
+
+            if (equippedOfSameType.length >= maxEquip) {
+                // Desequipar os que sobraram para dar espaço (desequipando o primeiro da fila)
+                const toUnequipCount = equippedOfSameType.length - maxEquip + 1;
+                for (let i = 0; i < toUnequipCount; i++) {
+                    await supabase.from('inventory').update({ is_equipped: false }).eq('id', equippedOfSameType[i].id)
                 }
             }
         }
@@ -584,6 +627,30 @@ function getArenaRewards(enemy: Enemy) {
     return { xpGain, goldGain }
 }
 
+async function getEquippedRelicCombatBonuses(profileId: string) {
+    const { data: equippedInv } = await supabase
+        .from('inventory')
+        .select('item_id')
+        .eq('profile_id', profileId)
+        .eq('is_equipped', true)
+
+    if (!equippedInv || equippedInv.length === 0) {
+        return { goldPct: 0, dropPct: 0 }
+    }
+
+    let goldPct = 0
+    let dropPct = 0
+
+    for (const entry of equippedInv) {
+        const spec = ITEMS.find(i => i.id === entry.item_id)
+        if (!spec || spec.type !== 'relic' || !spec.relic_effect) continue
+        goldPct += Number(spec.relic_effect.gold_per_duel_pct || 0)
+        dropPct += Number(spec.relic_effect.item_drop_per_duel_pct || 0)
+    }
+
+    return { goldPct, dropPct }
+}
+
 export async function resolveArenaCombat(
     profileId: string,
     enemy: Enemy,
@@ -620,6 +687,11 @@ export async function resolveArenaCombat(
     }
 
     const rewards = playerWon ? getArenaRewards(enemy) : { xpGain: 2, goldGain: 0 }
+    const relicBonuses = playerWon
+        ? await getEquippedRelicCombatBonuses(normalizedProfile.id)
+        : { goldPct: 0, dropPct: 0 }
+    const bonusGold = Math.floor(rewards.goldGain * (relicBonuses.goldPct / 100))
+    const totalGoldGain = rewards.goldGain + bonusGold
     const safeHpAfter = Math.max(1, Math.min(normalizedProfile.hp_current, Math.floor(hpAfterCombat)))
     const nextEnergy = Math.max(0, normalizedProfile.energy - COMBAT_ENERGY_COST)
 
@@ -638,7 +710,9 @@ export async function resolveArenaCombat(
 
     if (playerWon) {
         // Roll 1: Consumível (20% chance)
-        if (Math.random() < 0.20) {
+        const dropChance = Math.min(0.95, 0.20 + (relicBonuses.dropPct / 100))
+
+        if (Math.random() < dropChance) {
             const consumables = ITEMS.filter(i => i.type === 'consumable')
             const roll = Math.floor(Math.random() * consumables.length)
             const itemSpec = consumables[roll]
@@ -655,7 +729,7 @@ export async function resolveArenaCombat(
         }
 
         // Roll 2: Equipamento (20% chance de ocorrência)
-        if (Math.random() < 0.20) {
+        if (Math.random() < dropChance) {
             const rarityRoll = Math.random() * 100
             let targetRarity: ItemRarity = 'common'
 
@@ -689,7 +763,7 @@ export async function resolveArenaCombat(
             stat_points_available: levelUpData.stat_points_available,
             hp_current: levelUpData.hp_current,
             energy: levelUpData.energy,
-            gold: normalizedProfile.gold + rewards.goldGain,
+            gold: normalizedProfile.gold + totalGoldGain,
             energy_last_regen_at: new Date().toISOString()
         })
         .eq('id', normalizedProfile.id)
@@ -709,7 +783,7 @@ export async function resolveArenaCombat(
         success: true,
         playerWon,
         xpGain: rewards.xpGain,
-        goldGain: rewards.goldGain,
+        goldGain: totalGoldGain,
         energyCost: COMBAT_ENERGY_COST,
         hpAfter: levelUpData.hp_current,
         leveledUp: levelUpData.leveledUp,
@@ -760,3 +834,4 @@ export async function consumeItem(profileId: string, inventoryId: string, item: 
 
     return { success: true, message: `Você recuperou ${msgParts.join(' e ')}!` }
 }
+

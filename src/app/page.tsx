@@ -20,37 +20,36 @@ export default function Dashboard() {
   const [session, setSession] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Guard against concurrent refreshes
+  const isRefreshing = { current: false }
+
   const refreshProfile = async () => {
-    console.log('[DEBUG-RELOAD] refreshProfile started');
+    if (isRefreshing.current) return
+    isRefreshing.current = true
 
     if (!supabase || !isConfigValid) {
-      console.warn('[DEBUG-RELOAD] Supabase invalid or null');
       setError('Configuração do Supabase incompleta ou inválida no .env.local');
       setLoading(false);
+      isRefreshing.current = false
       return;
     }
 
     // Safety timeout to prevent infinite loading loop (30 seconds)
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => {
-        console.warn('[DEBUG-RELOAD] timeout triggered');
         reject(new Error('O SERVIDOR ESTÁ LEVANDO MAIS TEMPO QUE O ESPERADO. VERIFIQUE SUA INTERNET OU TENTE NOVAMENTE EM ALGUNS INSTANTES.'));
       }, 30000)
     )
 
     try {
-      if (profile) console.log('[SYNC] Background refresh started...');
-
       await Promise.race([
         (async () => {
           const { data: { session: s }, error: authErr } = await supabase.auth.getSession();
           if (authErr) throw authErr;
 
           setSession(s)
-          console.log('[DEBUG-AUTH] Session present?', !!s, s?.user?.email);
           if (s) {
             const data = await ensureProfile()
-            console.log('[DEBUG-RELOAD] Data from ensureProfile:', data ? `Found (${data.username})` : 'Not found (null)');
             setProfile(data)
           } else {
             setProfile(null)
@@ -62,28 +61,28 @@ export default function Dashboard() {
       if (!profile) {
         console.error('[CRITICAL] Initial load failed:', err)
         setError(err.message || 'Erro desconhecido na rede.')
-      } else {
-        console.warn('[SYNC] Background sync timeout/fail (ignoring):', err.message);
       }
     } finally {
       setLoading(false)
+      isRefreshing.current = false
     }
   }
 
   // Monitor for crashes
   useEffect(() => {
-    const handleError = (e: ErrorEvent) => console.error('[DEBUG-RELOAD] Runtime Crash:', e.error);
+    const handleError = (e: ErrorEvent) => console.error('[CRASH]', e.error);
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
   }, []);
 
+  // Single consolidated auth listener
   useEffect(() => {
-    // Escuta mudanças de auth para limpar o hash da URL (access_token)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      // Clean access_token from URL hash for security
       if (session && typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search)
       }
-      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
+      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY' || event === 'INITIAL_SESSION') {
         refreshProfile()
       } else if (event === 'SIGNED_OUT') {
         setProfile(null)
@@ -91,25 +90,15 @@ export default function Dashboard() {
       }
     })
 
-    // Limpa imediatamente no carregamento inicial caso already logged in via hash
+    // Clean URL hash on initial load
     if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
 
-    refreshProfile()
-
     return () => subscription.unsubscribe()
   }, [])
 
-  // Listener para mudanças de autenticação (Login/Logout imediato)
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, _session: any) => {
-      console.log('[DEBUG-AUTH] Event:', event);
-      refreshProfile();
-    });
-    return () => subscription.unsubscribe();
-  }, [])
-
+  // Periodic background sync (every 60s)
   useEffect(() => {
     const interval = setInterval(() => refreshProfile(), 60_000)
     return () => clearInterval(interval)
@@ -193,8 +182,8 @@ export default function Dashboard() {
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
         style={{
           backgroundImage: `url("${tabBackgrounds[activeTab]}")`,
-          filter: 'grayscale(0.4) brightness(0.2) contrast(1.2)',
-          opacity: 0.4
+          filter: 'grayscale(0.12) brightness(0.65) contrast(1.08)',
+          opacity: 1
         }}
       />
 
@@ -202,7 +191,7 @@ export default function Dashboard() {
       <div
         className="fixed inset-0 z-1 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at center, transparent 0%, rgba(20,13,7,0.4) 100%), linear-gradient(180deg, rgba(20,13,7,0.2) 0%, rgba(20,13,7,0.8) 100%)'
+          background: 'radial-gradient(circle at center, rgba(0,0,0,0.05) 0%, rgba(20,13,7,0.18) 100%), linear-gradient(180deg, rgba(20,13,7,0.08) 0%, rgba(20,13,7,0.35) 100%)'
         }}
       />
 
@@ -257,9 +246,9 @@ export default function Dashboard() {
 
           {/* ====== CONTEÚDO DA ABA ====== */}
           <div
-            className="relative rounded-b-lg rounded-tr-lg overflow-hidden"
+            className={`relative rounded-b-lg rounded-tr-lg ${activeTab === 'inventory' ? 'overflow-visible' : 'overflow-hidden'}`}
             style={{
-              background: 'rgba(20, 13, 7, 0.7)', // Semi-transparent to let global BG through
+              background: 'rgba(20, 13, 7, 0.35)', // Light veil so background remains visible
               border: '2px solid #d4af37', // Gold border
               boxShadow: '0 8px 32px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.6)',
               minHeight: '400px', // Reduced from 520px for better mobile fit

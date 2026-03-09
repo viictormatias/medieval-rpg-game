@@ -22,6 +22,7 @@ export interface SoulsDerivedStats {
     maxDamage: number
     requirementPenalty: number
     unmetRequirements: string[]
+    hpBonus: number
 }
 
 const SCALING_FACTOR: Record<ScalingGrade, number> = {
@@ -38,10 +39,18 @@ export function checkItemRequirements(
     item: Pick<Item, 'requirements' | 'name'>
 ) {
     const req = item.requirements || {}
-    const unmet = Object.entries(req).filter(([attr, needed]) => {
+    const unmet = Object.entries(req).map(([attr, needed]) => {
         const current = (profile as any)[attr] || 0
-        return current < Number(needed)
-    })
+        const isMet = current >= Number(needed)
+        return {
+            attr,
+            needed: Number(needed),
+            current,
+            diff: Math.max(0, Number(needed) - current),
+            isMet
+        }
+    }).filter(r => !r.isMet)
+
     const ATTRIBUTE_LABELS: Record<string, string> = {
         strength: 'FORÇA',
         agility: 'AGILIDADE',
@@ -49,9 +58,11 @@ export function checkItemRequirements(
         vigor: 'VIGOR',
         defense: 'DEFESA'
     }
+    
     return {
         meets: unmet.length === 0,
-        unmetLabels: unmet.map(([attr, needed]) => `${ATTRIBUTE_LABELS[attr] || attr.toUpperCase()} ${needed}`)
+        unmet,
+        unmetLabels: unmet.map(r => `${ATTRIBUTE_LABELS[r.attr] || r.attr.toUpperCase()} ${r.needed} (Faltam ${r.diff})`)
     }
 }
 
@@ -117,6 +128,7 @@ export function deriveSoulsStats(profile: Profile, equippedItems: EquippedItemEn
         minDamage,
         maxDamage,
         requirementPenalty,
-        unmetRequirements: Array.from(new Set(unmetRequirements))
+        unmetRequirements: Array.from(new Set(unmetRequirements)),
+        hpBonus: bonuses.vigor
     }
 }
