@@ -8,6 +8,7 @@ import { ITEMS as CATALOG_ITEMS, Item, ItemRarity, getItemById } from '@/lib/ite
 import { deriveSoulsStats, SoulsDerivedStats } from '@/lib/soulslike'
 import CharacterPortrait from './CharacterPortrait'
 import StatBar from './StatBar'
+import Lightbox from './Lightbox'
 
 const RARITY_COLORS: Record<string, { border: string; glow: string; label: string; textColor: string }> = {
     common: { border: '#3a3a3a', glow: 'transparent', label: 'Comum', textColor: '#9ca3af' },
@@ -38,14 +39,51 @@ function getEnemyStatBudget(level: number) {
     return BASE_CLASS_STAT_SUM + ONBOARDING_STAT_POINTS + (level - 1) * 3
 }
 
+type EnemyBuildWeights = {
+    strength: number
+    defense: number
+    agility: number
+    accuracy: number
+    vigor: number
+}
+
+// Build contextual por nome/fantasia do inimigo (foco de atributos).
+const ENEMY_BUILD_BY_NAME: Record<string, EnemyBuildWeights> = {
+    'Larápio de Saloon': { strength: 9, defense: 6, agility: 12, accuracy: 10, vigor: 7 },
+    'Saqueador Ardil': { strength: 10, defense: 7, agility: 14, accuracy: 13, vigor: 8 },
+    'Bandido de Estrada': { strength: 9, defense: 6, agility: 9, accuracy: 9, vigor: 7 },
+    'Desperado Solitário': { strength: 10, defense: 8, agility: 11, accuracy: 14, vigor: 8 },
+    'Xerife Renegado': { strength: 11, defense: 11, agility: 8, accuracy: 10, vigor: 10 },
+
+    'Billy the Kid, O Relampago': { strength: 12, defense: 9, agility: 18, accuracy: 17, vigor: 8 },
+    'Jesse James, Sombra do Trem': { strength: 13, defense: 9, agility: 15, accuracy: 14, vigor: 9 },
+    'Doc Holliday, As de Sangue': { strength: 11, defense: 9, agility: 16, accuracy: 19, vigor: 9 },
+    'Annie Oakley, Mira Implacavel': { strength: 9, defense: 8, agility: 14, accuracy: 22, vigor: 8 },
+    'Butch Cassidy, Rei do Assalto': { strength: 14, defense: 10, agility: 14, accuracy: 13, vigor: 10 },
+    'Sundance Kid, Passo Fantasma': { strength: 11, defense: 9, agility: 20, accuracy: 15, vigor: 9 },
+    'Calamity Jane, Tempestade Escarlate': { strength: 13, defense: 9, agility: 13, accuracy: 15, vigor: 10 },
+    'Wyatt Earp, Lei de Ferro': { strength: 15, defense: 16, agility: 12, accuracy: 17, vigor: 14 },
+}
+
 function getEnemyBaseStats(enemy: Enemy) {
     const total = getEnemyStatBudget(enemy.level)
+    const build = ENEMY_BUILD_BY_NAME[enemy.name]
 
-    let wStrength = Math.max(1, enemy.strength || 1)
-    let wAgility = Math.max(1, enemy.agility || 1)
-    let wAccuracy = Math.max(1, enemy.precision || 1)
-    let wDefense = Math.max(1, Math.round(enemy.level * 0.8))
-    let wVigor = Math.max(1, Math.round(enemy.level * 0.8))
+    let wStrength = build
+        ? Math.max(1, build.strength + Math.round((enemy.strength || 1) * 0.2))
+        : Math.max(1, enemy.strength || 1)
+    let wAgility = build
+        ? Math.max(1, build.agility + Math.round((enemy.agility || 1) * 0.2))
+        : Math.max(1, enemy.agility || 1)
+    let wAccuracy = build
+        ? Math.max(1, build.accuracy + Math.round((enemy.precision || 1) * 0.2))
+        : Math.max(1, enemy.precision || 1)
+    let wDefense = build
+        ? Math.max(1, build.defense + Math.round(enemy.level * 0.15))
+        : Math.max(1, Math.round(enemy.level * 0.8))
+    let wVigor = build
+        ? Math.max(1, build.vigor + Math.round(enemy.level * 0.15))
+        : Math.max(1, Math.round(enemy.level * 0.8))
 
     const weightSum = wStrength + wDefense + wAgility + wAccuracy + wVigor
 
@@ -269,6 +307,9 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
     const [enemyHp, setEnemyHp] = useState<number>(0)
     const [playerHit, setPlayerHit] = useState<'normal' | 'critical' | false>(false)
     const [enemyHit, setEnemyHit] = useState<'normal' | 'critical' | false>(false)
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+    const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
+    const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
     const [soulsSnapshot, setSoulsSnapshot] = useState<SoulsDerivedStats | null>(null)
     const [playerEquipment, setPlayerEquipment] = useState<{ weapon: Item | null, armor: Item[] }>({ weapon: null, armor: [] })
     const logEndRef = useRef<HTMLDivElement>(null)
@@ -354,6 +395,13 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         setTimeout(() => setEnemyHit(false), isCritical ? 800 : 600)
     }
 
+    const openItemLightbox = (item: Item) => {
+        if (!item?.image_url) return
+        setLightboxSrc(item.image_url)
+        setLightboxAlt(item.name)
+        setLightboxStats(item.stats || undefined)
+    }
+
     const handleFight = async () => {
         if (!selectedEnemy) return
         if (profile.energy < COMBAT_ENERGY_COST) {
@@ -433,8 +481,8 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         }
         for (const turn of result.history) {
             // Wait logic that can be interrupted
-            const sleepMs = 3200;
-            const pollInterval = 100;
+            const sleepMs = 2400;
+            const pollInterval = 80;
             let waited = 0;
 
             while (waited < sleepMs && !skipCombatRef.current) {
@@ -651,6 +699,29 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                         </div>
                         </div>
 
+                        {/* Player Equipment Grid */}
+                        <div className="flex flex-wrap gap-1.5 mt-auto pt-3 items-center justify-center">
+                            {(() => {
+                                const allItems = [playerEquipment.weapon, ...playerEquipment.armor].filter(Boolean) as Item[];
+                                if (allItems.length === 0) return <span className="text-[10px] text-gray-600 italic">Sem equipamento</span>;
+                                return allItems.map((item, idx) => (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group cursor-pointer transition-transform hover:scale-105"
+                                        style={{
+                                            borderColor: RARITY_COLORS[item.rarity || 'common'].border,
+                                            boxShadow: `0 0 6px ${RARITY_COLORS[item.rarity || 'common'].glow}`
+                                        }}
+                                        title={item.name}
+                                        onClick={() => openItemLightbox(item)}
+                                    >
+                                        <ItemIcon item={item} />
+                                    </button>
+                                ));
+                            })()}
+                        </div>
+
                         {/* VS Overlay */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
                             <div className="text-3xl md:text-4xl lg:text-5xl font-black text-[#a52a2a] italic tracking-tighter drop-shadow-2xl animate-pulse">VS</div>
@@ -861,6 +932,18 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                         )}
                 </div>
             </div>
+
+            <Lightbox
+                src={lightboxSrc}
+                isOpen={!!lightboxSrc}
+                onClose={() => {
+                    setLightboxSrc(null)
+                    setLightboxAlt(null)
+                    setLightboxStats(undefined)
+                }}
+                alt={lightboxAlt || undefined}
+                stats={lightboxStats}
+            />
         </div>
     )
 }

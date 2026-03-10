@@ -15,6 +15,9 @@ const JOB_ICONS: Record<string, string> = {
     scout: '👁️',
     gather: '🌿',
     trade: '💼',
+    fort: '🏰',
+    route: '🛤️',
+    expedition: '🧭',
 }
 
 function getJobIcon(title: string): string {
@@ -34,6 +37,9 @@ const JOB_CARD_IMAGES: Array<{ keywords: string[]; image: string }> = [
     { keywords: ['caravana', 'sal', 'deserto'], image: '/images/jobs/salt_caravan.jpg' },
     { keywords: ['trem', 'express'], image: '/images/jobs/train_heist.jpg' },
     { keywords: ['banco', 'assalto'], image: '/images/jobs/bank_heist.jpg' },
+    { keywords: ['forte', 'vigilia'], image: '/images/jobs/frontier_patrol.jpg' },
+    { keywords: ['contrabando', 'rota longa'], image: '/images/jobs/black_market.jpg' },
+    { keywords: ['expedicao', 'expedição', 'canyon'], image: '/images/jobs/salt_caravan.jpg' },
 ]
 
 function getJobCardImage(title: string): string {

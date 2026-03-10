@@ -68,6 +68,42 @@ const SLOT_MULTIPLIER: Record<Exclude<ItemType, 'consumable' | 'relic'>, number>
     shield: 1.5
 }
 
+const VIGOR_CAP_BY_RARITY: Record<ItemRarity, number> = {
+    common: 1,
+    uncommon: 2,
+    rare: 3,
+    epic: 4,
+    legendary: 5
+}
+
+const VIGOR_SLOT_BONUS: Record<Exclude<ItemType, 'consumable' | 'relic'>, number> = {
+    weapon: 1,
+    helmet: 0,
+    chest: 2,
+    gloves: 0,
+    legs: 1,
+    boots: 0,
+    shield: 1
+}
+
+const RARITY_POWER_BASE: Record<ItemRarity, number> = {
+    common: 22,
+    uncommon: 38,
+    rare: 58,
+    epic: 84,
+    legendary: 116
+}
+
+const SLOT_POWER_WEIGHT: Record<Exclude<ItemType, 'consumable' | 'relic'>, number> = {
+    weapon: 1.28,
+    helmet: 0.72,
+    chest: 1.22,
+    gloves: 0.66,
+    legs: 0.94,
+    boots: 0.72,
+    shield: 0.98
+}
+
 const SLOT_ICONS: Record<Exclude<ItemType, 'consumable' | 'relic'>, string> = {
     weapon: '🔫',
     helmet: '🤠',
@@ -231,6 +267,14 @@ function buildArmorStats(rarity: ItemRarity, archetype: Archetype, type: Exclude
         boots: 0.95,
         shield: 1.35
     }
+    const slotVigorFactor: Record<typeof type, number> = {
+        helmet: 0.65,
+        chest: 1.15,
+        gloves: 0.55,
+        legs: 0.9,
+        boots: 0.6,
+        shield: 0.85
+    }
 
     const defense = Math.max(2, Math.floor(cfg.armorDefBase * slotFactor[type]))
 
@@ -246,14 +290,14 @@ function buildArmorStats(rarity: ItemRarity, archetype: Archetype, type: Exclude
         return {
             defense: scalePositive(defense + 2, powerFactor),
             strength: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.25)), powerFactor),
-            vigor: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.3)), powerFactor),
+            vigor: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.18 * slotVigorFactor[type])), powerFactor),
             agility: scaleSigned(-Math.max(1, Math.floor(cfg.reqBase * 0.15)), powerFactor)
         }
     }
 
     return {
         defense: scalePositive(defense, powerFactor),
-        vigor: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.25)), powerFactor),
+        vigor: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.14 * slotVigorFactor[type])), powerFactor),
         accuracy: scalePositive(Math.max(1, Math.floor(cfg.reqBase * 0.2)), powerFactor)
     }
 }
@@ -329,6 +373,80 @@ function getItemPowerScore(item: Item) {
     }
 
     return Math.max(1, Math.round(score * 100) / 100)
+}
+
+function isEquippable(type: ItemType): type is Exclude<ItemType, 'consumable' | 'relic'> {
+    return type !== 'consumable' && type !== 'relic'
+}
+
+function buildPowerMultipliers(size: number) {
+    if (size <= 1) return [1]
+    const min = 0.9
+    const max = 1.14
+    const step = (max - min) / (size - 1)
+    return Array.from({ length: size }, (_, idx) => min + step * idx)
+}
+
+function scaleStatsForFactor(stats: Item['stats'], factor: number): Item['stats'] {
+    if (!stats) return stats
+
+    const out: Partial<Record<CoreStat, number>> = {}
+    for (const [key, rawVal] of Object.entries(stats)) {
+        const val = Number(rawVal || 0)
+        if (val === 0) continue
+        const scaled = val < 0
+            ? -Math.max(1, Math.round(Math.abs(val) * Math.max(1, factor * 0.9)))
+            : Math.max(1, Math.round(val * factor))
+        out[key as CoreStat] = scaled
+    }
+
+    return out
+}
+
+function rebalanceEquipmentStatsByBudget(items: Item[]) {
+    const grouped = new Map<string, Item[]>()
+
+    items.forEach((item) => {
+        if (!isEquippable(item.type)) return
+        const key = `${item.rarity}:${item.type}`
+        const group = grouped.get(key) || []
+        group.push(item)
+        grouped.set(key, group)
+    })
+
+    const scaledById = new Map<string, Item>()
+
+    grouped.forEach((group, key) => {
+        const [rarity, type] = key.split(':') as [ItemRarity, Exclude<ItemType, 'consumable' | 'relic'>]
+        const sorted = [...group].sort((a, b) => a.price - b.price)
+        const multipliers = buildPowerMultipliers(sorted.length)
+        const baseTargetPower = RARITY_POWER_BASE[rarity] * SLOT_POWER_WEIGHT[type]
+
+        sorted.forEach((item, idx) => {
+            const currentPower = getItemPowerScore(item)
+            const targetPower = baseTargetPower * multipliers[idx]
+            const rawFactor = targetPower / Math.max(1, currentPower)
+            const factor = Math.max(0.78, Math.min(1.26, rawFactor))
+
+            const nextStats = scaleStatsForFactor(item.stats, factor)
+            const isWeapon = item.type === 'weapon'
+            const nextMin = isWeapon && typeof item.min_damage === 'number'
+                ? Math.max(1, Math.round(item.min_damage * factor))
+                : item.min_damage
+            const nextMax = isWeapon && typeof item.max_damage === 'number'
+                ? Math.max(nextMin || 2, Math.round(item.max_damage * factor))
+                : item.max_damage
+
+            scaledById.set(item.id, {
+                ...item,
+                stats: nextStats,
+                min_damage: nextMin,
+                max_damage: nextMax
+            })
+        })
+    })
+
+    return items.map((item) => scaledById.get(item.id) || item)
 }
 
 function rebalancePricesByPower(items: Item[]) {
@@ -527,7 +645,34 @@ const LEGACY_ITEM_ID_ALIASES: Record<string, string> = {
     xerife_highmarshal_shield: 'xerife_lendario_legendary_shield'
 }
 
-export const ITEMS: Item[] = BASE_ITEMS.map((item) => {
+function getVigorCap(item: Item) {
+    if (!isEquippable(item.type)) return Infinity
+
+    const rarityBase = VIGOR_CAP_BY_RARITY[item.rarity]
+    const slotBonus = VIGOR_SLOT_BONUS[item.type]
+    const referencePrice = Math.max(1, Math.floor(TIER_CONFIG[item.rarity].priceBase * SLOT_MULTIPLIER[item.type]))
+    const priceRatio = item.price / referencePrice
+    const priceBonus = Math.max(0, Math.min(2, Math.floor((priceRatio - 1) / 0.22)))
+
+    return rarityBase + slotBonus + priceBonus
+}
+
+function applyVigorBalance(item: Item): Item {
+    if (!item.stats || typeof item.stats.vigor !== 'number' || item.stats.vigor <= 0) return item
+
+    const cap = getVigorCap(item)
+    if (item.stats.vigor <= cap) return item
+
+    return {
+        ...item,
+        stats: {
+            ...item.stats,
+            vigor: cap
+        }
+    }
+}
+
+const ITEMS_WITH_ALIASED_IMAGES: Item[] = BASE_ITEMS.map((item) => {
     const aliasId = LEGACY_ITEM_ID_ALIASES[item.id]
     if (!aliasId) return item
 
@@ -536,6 +681,8 @@ export const ITEMS: Item[] = BASE_ITEMS.map((item) => {
         image_url: `/images/items/${aliasId}_realistic.png`
     }
 })
+
+export const ITEMS: Item[] = rebalanceEquipmentStatsByBudget(ITEMS_WITH_ALIASED_IMAGES).map(applyVigorBalance)
 
 const ITEM_BY_ID = new Map<string, Item>(ITEMS.map((item) => [item.id, item]))
 

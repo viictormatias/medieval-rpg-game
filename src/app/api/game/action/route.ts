@@ -246,7 +246,53 @@ function getArenaRewards(enemy: any) {
   return { xpGain, goldGain }
 }
 
-async function grantDrops(admin: ReturnType<typeof getSupabaseAdminClient>, profileId: string, isDuel: boolean, dropBonusPct = 0) {
+function pickRarityForEnemy(level: number, dropBonusPct = 0): ItemRarity {
+  // Progressão por nível: sobe peso de raridades altas conforme inimigo fica mais forte.
+  let weights: Record<ItemRarity, number>
+
+  if (level >= 35) {
+    weights = { common: 6, uncommon: 16, rare: 33, epic: 29, legendary: 16 }
+  } else if (level >= 28) {
+    weights = { common: 10, uncommon: 22, rare: 33, epic: 25, legendary: 10 }
+  } else if (level >= 20) {
+    weights = { common: 15, uncommon: 30, rare: 30, epic: 20, legendary: 5 }
+  } else if (level >= 12) {
+    weights = { common: 26, uncommon: 34, rare: 25, epic: 12, legendary: 3 }
+  } else if (level >= 5) {
+    weights = { common: 40, uncommon: 35, rare: 18, epic: 6, legendary: 1 }
+  } else {
+    weights = { common: 55, uncommon: 30, rare: 12, epic: 2.8, legendary: 0.2 }
+  }
+
+  // Relíquias de drop aumentam chance de raridades altas sem quebrar a distribuição.
+  const bonusShift = Math.max(0, Math.min(14, dropBonusPct * 0.2))
+  const commonDrain = Math.min(weights.common * 0.6, bonusShift * 0.55)
+  const uncommonDrain = Math.min(weights.uncommon * 0.35, bonusShift * 0.45)
+  const drained = commonDrain + uncommonDrain
+
+  weights.common -= commonDrain
+  weights.uncommon -= uncommonDrain
+  weights.rare += drained * 0.45
+  weights.epic += drained * 0.35
+  weights.legendary += drained * 0.2
+
+  const total = Object.values(weights).reduce((sum, v) => sum + v, 0)
+  let roll = Math.random() * total
+  const order: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+  for (const rarity of order) {
+    if (roll < weights[rarity]) return rarity
+    roll -= weights[rarity]
+  }
+  return 'common'
+}
+
+async function grantDrops(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  profileId: string,
+  isDuel: boolean,
+  enemyLevel = 1,
+  dropBonusPct = 0
+) {
   let consumableDrop: { name: string; icon: string } | undefined = undefined
   let equipmentDrop: { name: string; icon: string; rarity: ItemRarity } | undefined = undefined
 
@@ -270,13 +316,7 @@ async function grantDrops(admin: ReturnType<typeof getSupabaseAdminClient>, prof
   }
 
   if (Math.random() < equipmentChance) {
-    const rarityRoll = Math.random() * 100
-    let targetRarity: ItemRarity = 'common'
-
-    if (rarityRoll < 0.5) targetRarity = 'legendary'
-    else if (rarityRoll < 4) targetRarity = 'epic'
-    else if (rarityRoll < 12) targetRarity = 'rare'
-    else if (rarityRoll < 35) targetRarity = 'uncommon'
+    const targetRarity = pickRarityForEnemy(Number(enemyLevel || 1), dropBonusPct)
 
     const possibleItems = ITEMS.filter(i => {
       if (i.type === 'consumable') return false
@@ -797,6 +837,8 @@ export async function POST(req: Request) {
     if (action === 'resolve_arena') {
       const enemyId = String(payload.enemyId || '')
       const combatTicket = String(payload.combatTicket || '')
+      const clientPlayerWon = payload.clientPlayerWon === true
+      const clientHpAfterCombat = Number(payload.clientHpAfterCombat)
       assertUuid(enemyId, 'enemyId')
 
       if (!combatTicket || combatTicket.length < 20) {
@@ -839,7 +881,8 @@ export async function POST(req: Request) {
 
       const rawWinChance = playerPower / Math.max(1, playerPower + enemyPower)
       const winChance = Math.max(0.1, Math.min(0.9, rawWinChance))
-      const playerWon = Math.random() <= winChance
+      const serverPredictedWon = Math.random() <= winChance
+      const playerWon = clientPlayerWon
 
       const rewards = playerWon
         ? getArenaRewards(enemy)
@@ -856,7 +899,9 @@ export async function POST(req: Request) {
         ? Math.max(1, Math.floor(Math.random() * 12))
         : Math.max(8, Math.floor(Math.random() * 25))
 
-      const safeHpAfter = Math.max(1, Number(profile.hp_current || 1) - randomHpDelta)
+      const safeHpAfter = Number.isFinite(clientHpAfterCombat)
+        ? Math.max(1, Math.min(Number(profile.hp_max || 100), Math.floor(clientHpAfterCombat)))
+        : Math.max(1, Number(profile.hp_current || 1) - randomHpDelta)
       const nextEnergy = Math.max(0, Number(profile.energy || 0) - COMBAT_ENERGY_COST)
 
       const levelUpData = calculateLevelUp(
@@ -871,7 +916,7 @@ export async function POST(req: Request) {
 
       let drops = { consumableDrop: undefined as any, equipmentDrop: undefined as any }
       if (playerWon) {
-        drops = await grantDrops(admin, userId, true, relicBonuses.dropPct)
+        drops = await grantDrops(admin, userId, true, Number(enemy.level || 1), relicBonuses.dropPct)
       }
 
       const { error: updateError } = await admin
@@ -893,6 +938,7 @@ export async function POST(req: Request) {
       return ok({
         success: true,
         playerWon,
+        serverPredictedWon,
         xpGain: rewards.xpGain,
         goldGain: totalGoldGain,
         energyCost: COMBAT_ENERGY_COST,

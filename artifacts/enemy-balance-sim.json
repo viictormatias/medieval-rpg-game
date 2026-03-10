@@ -1,0 +1,85 @@
+{
+  "runsPerEnemy": 1200,
+  "tier1AvgWinRate": 54.1,
+  "tier2AvgWinRate": 39.5,
+  "results": [
+    {
+      "enemy": "Larápio de Saloon",
+      "level": 2,
+      "tier": "tier1",
+      "playerWinRatePct": 91.5
+    },
+    {
+      "enemy": "Saqueador Ardil",
+      "level": 2,
+      "tier": "tier1",
+      "playerWinRatePct": 97
+    },
+    {
+      "enemy": "Bandido de Estrada",
+      "level": 4,
+      "tier": "tier1",
+      "playerWinRatePct": 27
+    },
+    {
+      "enemy": "Desperado Solitário",
+      "level": 7,
+      "tier": "tier1",
+      "playerWinRatePct": 41.3
+    },
+    {
+      "enemy": "Xerife Renegado",
+      "level": 12,
+      "tier": "tier1",
+      "playerWinRatePct": 13.6
+    },
+    {
+      "enemy": "Billy the Kid, O Relampago",
+      "level": 20,
+      "tier": "tier2",
+      "playerWinRatePct": 59.7
+    },
+    {
+      "enemy": "Jesse James, Sombra do Trem",
+      "level": 22,
+      "tier": "tier2",
+      "playerWinRatePct": 26.2
+    },
+    {
+      "enemy": "Doc Holliday, As de Sangue",
+      "level": 24,
+      "tier": "tier2",
+      "playerWinRatePct": 35.5
+    },
+    {
+      "enemy": "Annie Oakley, Mira Implacavel",
+      "level": 26,
+      "tier": "tier2",
+      "playerWinRatePct": 53
+    },
+    {
+      "enemy": "Butch Cassidy, Rei do Assalto",
+      "level": 28,
+      "tier": "tier2",
+      "playerWinRatePct": 28.7
+    },
+    {
+      "enemy": "Sundance Kid, Passo Fantasma",
+      "level": 30,
+      "tier": "tier2",
+      "playerWinRatePct": 44.8
+    },
+    {
+      "enemy": "Calamity Jane, Tempestade Escarlate",
+      "level": 32,
+      "tier": "tier2",
+      "playerWinRatePct": 34.1
+    },
+    {
+      "enemy": "Wyatt Earp, Lei de Ferro",
+      "level": 35,
+      "tier": "tier2",
+      "playerWinRatePct": 34.2
+    }
+  ]
+}
