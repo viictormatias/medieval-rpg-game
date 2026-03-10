@@ -13,7 +13,7 @@ const HP_REGEN_INTERVAL_SECONDS = 30
 const HP_REGEN_FULL_HEAL_SECONDS = 600
 
 const ONBOARDING_STAT_POINTS = 5
-const ONBOARDING_FREE_STAT_POINTS = 5
+const ONBOARDING_FREE_STAT_POINTS = 0
 const ONBOARDING_MAX_PER_STAT = 8
 const COMBAT_ENERGY_COST = 0
 const ARENA_TICKET_TTL_MS = 3 * 60 * 1000
@@ -435,13 +435,13 @@ export async function POST(req: Request) {
       const allocation = normalizeAllocation(payload.allocation)
 
       const classStatsMap: Record<ClassType, { hp_max: number; strength: number; defense: number; agility: number; accuracy: number; vigor: number; gold: number }> = {
-        Pistoleiro: { hp_max: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1, gold: 100 },
-        Xerife: { hp_max: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3, gold: 100 },
-        Forasteiro: { hp_max: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2, gold: 100 },
-        Pregador: { hp_max: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3, gold: 100 },
-        Nativo: { hp_max: 100, strength: 3, defense: 1, agility: 3, accuracy: 2, vigor: 1, gold: 100 },
-        Vendedor: { hp_max: 100, strength: 1, defense: 1, agility: 3, accuracy: 3, vigor: 2, gold: 100 },
-        CacadorDeRecompensas: { hp_max: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1, gold: 100 },
+        Pistoleiro: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        Xerife: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        Forasteiro: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        Pregador: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        Nativo: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        Vendedor: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
+        CacadorDeRecompensas: { hp_max: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0, gold: 100 },
       }
 
       if (!classStatsMap[classType]) {

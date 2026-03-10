@@ -282,7 +282,7 @@ export async function logout() {
 }
 
 export async function getJobs(): Promise<Job[]> {
-    const { data, error } = await supabase.from('jobs').select('*').order('energy_cost', { ascending: true })
+    const { data, error } = await supabase.from('jobs').select('*').order('reward_gold', { ascending: true })
     return error ? [] : data
 }
 

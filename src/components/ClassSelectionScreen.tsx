@@ -47,7 +47,7 @@ const CLASSES = [
         imageSrc: '/images/xerife.jpeg',
         description: 'Linha de frente resistente. Segura o duelo sob pressão.',
         flavor: 'A estrela no peito pesa tanto quanto o ferro no coldre. A lei é a única coisa que separa este mundo do abismo.',
-        base: { hp: 100, strength: 2, defense: 3, agility: 1, accuracy: 1, vigor: 3 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#3b82f6'
     },
     {
@@ -59,7 +59,7 @@ const CLASSES = [
         imageSrc: '/images/pistoleiro.jpeg',
         description: 'Especialista em agilidade e precisão no saque.',
         flavor: 'Rapidez não é escolha, é sobrevivência. Antes que a poeira baixe, o Kid já terá guardado a arma.',
-        base: { hp: 100, strength: 1, defense: 1, agility: 4, accuracy: 3, vigor: 1 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#f2b90d'
     },
     {
@@ -71,7 +71,7 @@ const CLASSES = [
         imageSrc: '/images/forasteiro.jpeg',
         description: 'Versátil e perigoso, pronto para qualquer contrato.',
         flavor: 'Ninguém sabe de onde veio, e ninguém viverá para saber para onde vai. Ele é o rastro que o vento apaga.',
-        base: { hp: 100, strength: 2, defense: 2, agility: 2, accuracy: 2, vigor: 2 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#ef4444'
     },
     {
@@ -83,7 +83,7 @@ const CLASSES = [
         imageSrc: '/images/pregador.jpeg',
         description: 'Sanção divina e resistência espiritual.',
         flavor: 'Em uma mão a Bíblia, na outra o julgamento. Ele busca salvar almas, mas não se importa em enterrar corpos.',
-        base: { hp: 100, strength: 1, defense: 3, agility: 1, accuracy: 2, vigor: 3 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#a855f7'
     },
     {
@@ -95,7 +95,7 @@ const CLASSES = [
         imageSrc: '/images/nativo.jpeg',
         description: 'Guerreiro das sombras, mestre em emboscadas.',
         flavor: 'As montanhas lembram de quem era esta terra. Ele não luta por glória, luta para que o passado não seja esquecido.',
-        base: { hp: 100, strength: 3, defense: 1, agility: 3, accuracy: 2, vigor: 1 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#22c55e'
     },
     {
@@ -107,7 +107,7 @@ const CLASSES = [
         imageSrc: '/images/mercador.jpeg',
         description: 'Negociante astuto com recursos extras.',
         flavor: 'O ouro brilha mais que a honra. Se ele não puder te vencer no saque, ele te vencerá no contrato.',
-        base: { hp: 100, strength: 1, defense: 1, agility: 3, accuracy: 3, vigor: 2 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#eab308'
     },
     {
@@ -119,7 +119,7 @@ const CLASSES = [
         imageSrc: '/images/cacador-de-recompensas.jpeg',
         description: 'Rastreador implacável e precisão fatal.',
         flavor: 'Para ele, homens são apenas números em um papel de \'Procurado\'. Ele nunca erra o rastro, e nunca volta de mãos vazias.',
-        base: { hp: 100, strength: 3, defense: 1, agility: 2, accuracy: 3, vigor: 1 },
+        base: { hp: 100, strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 },
         color: '#f97316'
     }
 ]
@@ -159,7 +159,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
     }
 
     useEffect(() => {
-        applyClassDefaultPreset(selectedClass)
+        setAlloc({ ...EMPTY_ALLOC })
     }, [selectedClass])
 
     const pointsUsed = useMemo(
@@ -361,11 +361,11 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
                                 </div>
                                 {ONBOARDING_STAT_POINTS > 0 ? (
                                     <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
-                                        Distribua exatamente {ONBOARDING_STAT_POINTS} pontos iniciais. Você começa com 5 pontos para distribuir na aba de status.
+                                        Distribua exatamente {ONBOARDING_STAT_POINTS} pontos iniciais.
                                     </div>
                                 ) : (
                                     <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
-                                        Atributos iniciais sem distribuição manual. Use os 5 pontos na aba de status após criar.
+                                        Atributos iniciais definidos pela classe.
                                     </div>
                                 )}
 

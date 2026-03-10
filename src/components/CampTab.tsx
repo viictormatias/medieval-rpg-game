@@ -161,9 +161,16 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-bold text-[#d9c5b2] text-xl md:text-2xl font-serif tracking-wide mb-1 leading-tight">{job.title}</h3>
-                                        <span className="text-[10px] md:text-sm uppercase tracking-[0.2em] text-[#a52a2a] font-black bg-black/30 px-2 py-0.5 rounded-sm">
-                                            {formatDuration(job.duration_seconds)}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] md:text-sm uppercase tracking-[0.2em] text-[#a52a2a] font-black bg-black/30 px-2 py-0.5 rounded-sm">
+                                                {formatDuration(job.duration_seconds)}
+                                            </span>
+                                            {profile.level < job.min_level && (
+                                                <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-black bg-red-900/40 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-sm">
+                                                    Desbloqueia no Nvl {job.min_level}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

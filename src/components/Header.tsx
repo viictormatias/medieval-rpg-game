@@ -156,7 +156,8 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
             <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ borderBottom: '1px dashed rgba(212, 175, 55, 0.2)' }}></div>
 
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-2 md:gap-4 px-4 py-2 md:py-3">
-                <div className="flex flex-row items-center justify-between w-full md:flex-1 md:min-w-0 gap-4 md:gap-6">
+                {/* Left: Logo + Player Card */}
+                <div className="flex flex-row items-center gap-3 md:gap-4 flex-shrink-0">
                     <div className="flex-shrink-0">
                         <img
                             src={getOptimizedAssetSrc('/images/logo-pequena-semfundo.png') || '/images/logo-pequena-semfundo.png'}
@@ -165,76 +166,73 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-3 flex-wrap lg:flex-nowrap min-w-0">
-                        <div className="relative group shrink-0 md:scale-110 md:origin-left">
-                            <CharacterPortrait
-                                src={CLASS_PORTRAITS[profile.class] || null}
-                                fallbackEmoji="🤠"
-                                borderColor="gold"
-                                size="sm"
-                                name={profile.username}
-                                className="scale-90 md:scale-100 origin-left"
-                            />
-                            <button
-                                onClick={() => supabase.auth.signOut()}
-                                className="absolute -top-1 -right-1 bg-black/60 hover:bg-red-900/40 border border-[#d4af37]/30 text-[#d4af37] hover:text-red-500 hover:border-red-500/50 w-6 h-6 flex items-center justify-center rounded-full transition-all z-20 shadow-lg"
-                                title="Deslogar"
-                            >
-                                <span className="text-[10px] leading-none">✕</span>
-                            </button>
-                        </div>
+                    <div className="relative group shrink-0 md:scale-110 md:origin-left">
+                        <CharacterPortrait
+                            src={CLASS_PORTRAITS[profile.class] || null}
+                            fallbackEmoji="🤠"
+                            borderColor="gold"
+                            size="sm"
+                            name={profile.username}
+                            className="scale-90 md:scale-100 origin-left"
+                        />
+                        <button
+                            onClick={() => supabase.auth.signOut()}
+                            className="absolute -top-1 -right-1 bg-black/60 hover:bg-red-900/40 border border-[#d4af37]/30 text-[#d4af37] hover:text-red-500 hover:border-red-500/50 w-6 h-6 flex items-center justify-center rounded-full transition-all z-20 shadow-lg"
+                            title="Deslogar"
+                        >
+                            <span className="text-[10px] leading-none">✕</span>
+                        </button>
+                    </div>
 
-                        <div className="min-w-0 pr-1 flex-1">
-                            <h1 className="text-sm md:text-base font-bold text-[#d9c5b2] leading-tight tracking-wide font-serif truncate">
-                                {profile.username}
-                            </h1>
-                            <div className="flex items-center gap-1.5 md:gap-2 mt-0.5">
-                                <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#d4af37] whitespace-nowrap">
-                                    Nvl {profile.level}
+                    <div className="min-w-0 pr-1">
+                        <h1 className="text-sm md:text-base font-bold text-[#d9c5b2] leading-tight tracking-wide font-serif truncate">
+                            {profile.username}
+                        </h1>
+                        <div className="flex items-center gap-1.5 md:gap-2 mt-0.5">
+                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#d4af37] whitespace-nowrap">
+                                Nvl {profile.level}
+                            </span>
+                            {profile.stat_points_available > 0 && (
+                                <span className="bg-gold text-black text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow-[0_0_8px_rgba(212,175,55,0.6)]">
+                                    UP!
                                 </span>
-                                {profile.stat_points_available > 0 && (
-                                    <span className="bg-gold text-black text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow-[0_0_8px_rgba(212,175,55,0.6)]">
-                                        UP!
-                                    </span>
-                                )}
-                                <span className="text-[10px] text-[#423020]">•</span>
-                                <span className="text-[10px] md:text-[12px] uppercase tracking-widest text-[#a52a2a] font-bold truncate">
-                                    {playerClass}
-                                </span>
-                            </div>
+                            )}
+                            <span className="text-[10px] text-[#423020]">•</span>
+                            <span className="text-[10px] md:text-[12px] uppercase tracking-widest text-[#a52a2a] font-bold truncate">
+                                {playerClass}
+                            </span>
                         </div>
-
-                        <div className="flex items-center gap-1 bg-[#140d07] px-2 py-0.5 rounded-sm border border-[#2b1f14] w-fit ml-auto md:ml-0">
+                        <div className="flex items-center gap-1 bg-[#140d07] px-2 py-0.5 rounded-sm border border-[#2b1f14] w-fit mt-1">
                             <span className="text-[10px] text-[#d4af37]">💰</span>
                             <span className="text-[10px] text-[#d4af37] font-bold font-mono">{profile.gold}</span>
                         </div>
-
-                        {/* Persistent Job Tracker (Enhanced Vertical) */}
-                        {activeJob && (
-                            <div className="hidden lg:flex flex-col justify-center items-center bg-[rgba(242,185,13,0.04)] border border-[#d4af37]/30 px-3 py-2 min-h-[48px] rounded-sm shadow-2xl animate-in slide-in-from-right duration-500 relative overflow-hidden group shrink max-w-[180px] xl:max-w-[240px] ml-0 xl:ml-2">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-0.5 self-start">Em Missão:</span>
-                                <div className="flex items-center gap-3 w-full">
-                                    <span className="text-[10px] font-bold text-[#d9c5b2] font-serif uppercase tracking-tight truncate min-w-0">{activeJob.title}</span>
-                                    <div className="w-px h-3 bg-[#d4af37]/20" />
-                                    {timeLeft > 0 ? (
-                                        <span className="text-xs font-mono font-black text-gold flex items-center gap-1.5 shrink-0">
-                                            <span className="animate-pulse text-[10px]">⌛</span> {Math.floor(timeLeft / 60)}m
-                                        </span>
-                                    ) : profile.job_finish_at && new Date(profile.job_finish_at).getTime() <= Date.now() ? (
-                                        <button
-                                            onClick={handleClaim}
-                                            disabled={isClaiming}
-                                            className="text-[10px] font-black uppercase tracking-widest bg-gold text-black px-3 py-1 hover:brightness-125 active:scale-95 transition-all shadow-[0_0_10px_rgba(242,185,13,0.3)] animate-bounce"
-                                        >
-                                            {isClaiming ? '...' : 'COLETAR'}
-                                        </button>
-                                    ) : null}
-                                </div>
-                                <div className="absolute bottom-0 left-0 h-[1px] bg-gold/20 w-full" />
-                            </div>
-                        )}
                     </div>
                 </div>
+
+                {/* Center: Job Tracker */}
+                {activeJob && (
+                    <div className="hidden lg:flex flex-col justify-center items-center bg-[rgba(242,185,13,0.04)] border border-[#d4af37]/30 px-4 py-2 min-h-[48px] rounded-sm shadow-2xl animate-in slide-in-from-right duration-500 relative overflow-hidden group flex-1 max-w-xs mx-auto">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-0.5 self-start">Em Missão:</span>
+                        <div className="flex items-center gap-3 w-full">
+                            <span className="text-[10px] font-bold text-[#d9c5b2] font-serif uppercase tracking-tight truncate min-w-0">{activeJob.title}</span>
+                            <div className="w-px h-3 bg-[#d4af37]/20" />
+                            {timeLeft > 0 ? (
+                                <span className="text-xs font-mono font-black text-gold flex items-center gap-1.5 shrink-0">
+                                    <span className="animate-pulse text-[10px]">⌛</span> {Math.floor(timeLeft / 60)}m
+                                </span>
+                            ) : profile.job_finish_at && new Date(profile.job_finish_at).getTime() <= Date.now() ? (
+                                <button
+                                    onClick={handleClaim}
+                                    disabled={isClaiming}
+                                    className="text-[10px] font-black uppercase tracking-widest bg-gold text-black px-3 py-1 hover:brightness-125 active:scale-95 transition-all shadow-[0_0_10px_rgba(242,185,13,0.3)] animate-bounce"
+                                >
+                                    {isClaiming ? '...' : 'COLETAR'}
+                                </button>
+                            ) : null}
+                        </div>
+                        <div className="absolute bottom-0 left-0 h-[1px] bg-gold/20 w-full" />
+                    </div>
+                )}
 
                 <div className="flex flex-col gap-1 md:gap-2 w-full md:w-96 md:flex-shrink-0 pb-2 md:pb-0">
                     <div className="flex items-center gap-2">
