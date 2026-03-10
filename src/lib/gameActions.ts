@@ -61,7 +61,7 @@ export interface CombatResolution {
 
 export type InitialStatKey = 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor'
 export type InitialStatAllocation = Partial<Record<InitialStatKey, number>>
-export const ONBOARDING_STAT_POINTS = 5
+export const ONBOARDING_STAT_POINTS = 0
 export const ONBOARDING_MAX_PER_STAT = 8
 export const COMBAT_ENERGY_COST = 0
 const MAX_ENERGY = 100

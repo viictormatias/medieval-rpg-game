@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { ITEMS, ItemRarity, getItemById } from '@/lib/items'
+import { MAX_LEVEL, xpForNextLevel } from '@/lib/progression'
 import { requireUserIdFromRequest } from '@/lib/server/auth'
 import { assertUuid, clampInt, createArenaTicket, consumeArenaTicket, enforceRateLimit, normalizeUsername } from '@/lib/server/gameGuards'
 import { getSupabaseAdminClient } from '@/lib/server/supabaseAdmin'
@@ -11,7 +12,8 @@ const ENERGY_REGEN_INTERVAL_SECONDS = 360
 const HP_REGEN_INTERVAL_SECONDS = 30
 const HP_REGEN_FULL_HEAL_SECONDS = 600
 
-const ONBOARDING_STAT_POINTS = 5
+const ONBOARDING_STAT_POINTS = 0
+const ONBOARDING_FREE_STAT_POINTS = 5
 const ONBOARDING_MAX_PER_STAT = 8
 const COMBAT_ENERGY_COST = 0
 const ARENA_TICKET_TTL_MS = 3 * 60 * 1000
@@ -20,6 +22,13 @@ type ClassType = 'Pistoleiro' | 'Xerife' | 'Forasteiro' | 'Pregador' | 'Nativo' 
 type StatKey = 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor'
 
 const STAT_KEYS: StatKey[] = ['strength', 'defense', 'agility', 'accuracy', 'vigor']
+const STAT_CAPS: Record<StatKey, number> = {
+  strength: 80,
+  defense: 80,
+  agility: 80,
+  accuracy: 80,
+  vigor: 80,
+}
 
 function fail(error: string, status = 400) {
   return NextResponse.json({ success: false, error }, { status })
@@ -51,14 +60,29 @@ function calculateLevelUp(
   let filledEnergy = currentEnergy
 
   let leveledUp = false
+  if (nextLevel >= MAX_LEVEL) {
+    return {
+      level: MAX_LEVEL,
+      xp: 0,
+      stat_points_available: nextPoints,
+      hp_current: healedHp,
+      energy: filledEnergy,
+      leveledUp: false,
+    }
+  }
 
-  while (nextXp >= nextLevel * 100) {
-    nextXp -= nextLevel * 100
+  while (nextLevel < MAX_LEVEL && nextXp >= xpForNextLevel(nextLevel)) {
+    nextXp -= xpForNextLevel(nextLevel)
     nextLevel++
     nextPoints += 3
     healedHp = hpMax
     filledEnergy = MAX_ENERGY
     leveledUp = true
+  }
+
+  if (nextLevel >= MAX_LEVEL) {
+    nextLevel = MAX_LEVEL
+    nextXp = 0
   }
 
   return {
@@ -241,9 +265,51 @@ async function getEquippedRelicCombatBonuses(admin: ReturnType<typeof getSupabas
 }
 
 function getArenaRewards(enemy: any) {
-  const xpGain = Math.max(8, Math.floor(enemy.level * 12 + enemy.hp_max * 0.18))
-  const goldGain = Math.max(5, Math.floor(enemy.level * 7 + enemy.strength * 0.6))
+  const xpGain = Math.max(
+    6,
+    Math.floor(
+      Number(enemy.level || 1) * 8 +
+      Number(enemy.hp_max || 1) * 0.09 +
+      Number(enemy.strength || 1) * 0.35 +
+      Number(enemy.precision || 1) * 0.35
+    )
+  )
+  const goldGain = Math.max(
+    4,
+    Math.floor(
+      Number(enemy.level || 1) * 5 +
+      Number(enemy.strength || 1) * 0.4 +
+      Number(enemy.hp_max || 1) * 0.03
+    )
+  )
   return { xpGain, goldGain }
+}
+
+function getArenaDifficultyMultiplier(playerPower: number, enemyPower: number) {
+  const ratio = enemyPower / Math.max(1, playerPower)
+  return Math.max(0.72, Math.min(1.45, 0.75 + ratio * 0.45))
+}
+
+function calculateJobRewards(job: any, profileLevel: number) {
+  const minLevel = Math.max(1, Number(job.min_level || 1))
+  const durationMin = Math.max(1, Math.floor(Number(job.duration_seconds || 0) / 60))
+  const dbXp = Math.max(0, Number(job.reward_xp || 0))
+  const dbGold = Math.max(0, Number(job.reward_gold || 0))
+
+  const baselineXp = Math.floor(24 + minLevel * 12 + durationMin * 2.4)
+  const baselineGold = Math.floor(16 + minLevel * 9 + durationMin * 2.1)
+
+  const blendedXp = Math.floor(dbXp * 0.55 + baselineXp * 0.45)
+  const blendedGold = Math.floor(dbGold * 0.5 + baselineGold * 0.5)
+
+  // Anti-farm: jobs muito abaixo do nível do jogador rendem menos.
+  const levelGap = Math.max(0, Number(profileLevel || 1) - minLevel)
+  const farmPenalty = levelGap <= 8 ? 1 : Math.max(0.45, 1 - (levelGap - 8) * 0.03)
+
+  return {
+    xpGain: Math.max(4, Math.floor(blendedXp * farmPenalty)),
+    goldGain: Math.max(3, Math.floor(blendedGold * farmPenalty)),
+  }
 }
 
 function pickRarityForEnemy(level: number, dropBonusPct = 0): ItemRarity {
@@ -418,7 +484,7 @@ export async function POST(req: Request) {
             last_regen_at: new Date().toISOString(),
             level: 1,
             xp: 0,
-            stat_points_available: 0,
+            stat_points_available: ONBOARDING_FREE_STAT_POINTS,
           },
         ])
         .select('*')
@@ -507,32 +573,33 @@ export async function POST(req: Request) {
 
       const { data: job, error: jobError } = await admin
         .from('jobs')
-        .select('id,reward_xp,reward_gold')
+        .select('id,duration_seconds,reward_xp,reward_gold,min_level')
         .eq('id', profile.current_job_id)
         .single()
 
       if (jobError || !job) return fail('Trabalho inválido para coleta.')
 
-      const levelUpData = calculateLevelUp(
+      const jobRewards = calculateJobRewards(job, Number(profile.level || 1))
+      const effectiveXpGain = Number(profile.level || 1) >= MAX_LEVEL ? 0 : jobRewards.xpGain
+      const levelUpDataWithXp = calculateLevelUp(
         Number(profile.level || 1),
         Number(profile.xp || 0),
-        Number(job.reward_xp || 0),
+        effectiveXpGain,
         Number(profile.stat_points_available || 0),
         Number(profile.hp_max || 100),
         Number(profile.hp_current || 1),
         Number(profile.energy || 0)
       )
-
-      const nextGold = Number(profile.gold || 0) + Number(job.reward_gold || 0)
+      const nextGold = Number(profile.gold || 0) + jobRewards.goldGain
 
       const { error: claimError } = await admin
         .from('profiles')
         .update({
-          level: levelUpData.level,
-          xp: levelUpData.xp,
-          stat_points_available: levelUpData.stat_points_available,
-          hp_current: levelUpData.hp_current,
-          energy: levelUpData.energy,
+          level: levelUpDataWithXp.level,
+          xp: levelUpDataWithXp.xp,
+          stat_points_available: levelUpDataWithXp.stat_points_available,
+          hp_current: levelUpDataWithXp.hp_current,
+          energy: levelUpDataWithXp.energy,
           gold: nextGold,
           current_job_id: null,
           job_finish_at: null,
@@ -545,10 +612,12 @@ export async function POST(req: Request) {
       await grantDrops(admin, userId, false)
 
       return ok({
-        xp: levelUpData.xp,
+        xp: levelUpDataWithXp.xp,
         gold: nextGold,
-        level: levelUpData.level,
-        stat_points_available: levelUpData.stat_points_available,
+        level: levelUpDataWithXp.level,
+        stat_points_available: levelUpDataWithXp.stat_points_available,
+        xpGain: effectiveXpGain,
+        goldGain: jobRewards.goldGain,
       })
     }
 
@@ -790,7 +859,12 @@ export async function POST(req: Request) {
       for (const key of STAT_KEYS) {
         const points = normalized[key]
         if (points > 0) {
-          updates[key] = Number(profile[key] || 0) + points
+          const currentStat = Number(profile[key] || 0)
+          const cap = STAT_CAPS[key]
+          if (currentStat + points > cap) {
+            return fail(`Limite de ${key} atingido (${cap}).`)
+          }
+          updates[key] = currentStat + points
           if (key === 'vigor') hpBonus += points * 10
         }
       }
@@ -887,13 +961,21 @@ export async function POST(req: Request) {
       const rewards = playerWon
         ? getArenaRewards(enemy)
         : { xpGain: 2, goldGain: 0 }
+      const difficultyMultiplier = getArenaDifficultyMultiplier(playerPower, enemyPower)
+      const scaledRewards = playerWon
+        ? {
+          xpGain: Math.max(4, Math.floor(rewards.xpGain * difficultyMultiplier)),
+          goldGain: Math.max(3, Math.floor(rewards.goldGain * difficultyMultiplier)),
+        }
+        : { xpGain: 0, goldGain: 0 }
+      const effectiveXpGain = Number(profile.level || 1) >= MAX_LEVEL ? 0 : scaledRewards.xpGain
 
       const relicBonuses = playerWon
         ? await getEquippedRelicCombatBonuses(admin, userId)
         : { goldPct: 0, dropPct: 0 }
 
-      const bonusGold = Math.floor(rewards.goldGain * (relicBonuses.goldPct / 100))
-      const totalGoldGain = rewards.goldGain + bonusGold
+      const bonusGold = Math.floor(scaledRewards.goldGain * (relicBonuses.goldPct / 100))
+      const totalGoldGain = scaledRewards.goldGain + bonusGold
 
       const randomHpDelta = playerWon
         ? Math.max(1, Math.floor(Math.random() * 12))
@@ -907,7 +989,7 @@ export async function POST(req: Request) {
       const levelUpData = calculateLevelUp(
         Number(profile.level || 1),
         Number(profile.xp || 0),
-        rewards.xpGain,
+        effectiveXpGain,
         Number(profile.stat_points_available || 0),
         Number(profile.hp_max || 100),
         safeHpAfter,
@@ -939,7 +1021,7 @@ export async function POST(req: Request) {
         success: true,
         playerWon,
         serverPredictedWon,
-        xpGain: rewards.xpGain,
+        xpGain: effectiveXpGain,
         goldGain: totalGoldGain,
         energyCost: COMBAT_ENERGY_COST,
         hpAfter: levelUpData.hp_current,

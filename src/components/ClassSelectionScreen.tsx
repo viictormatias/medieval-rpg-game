@@ -144,6 +144,10 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
     )
 
     const applyClassDefaultPreset = (classType: ClassType) => {
+        if (ONBOARDING_STAT_POINTS <= 0) {
+            setAlloc({ ...EMPTY_ALLOC })
+            return
+        }
         const preset = CLASS_DEFAULT_PRESET[classType]
         setAlloc({
             strength: Number(preset.strength || 0),
@@ -177,6 +181,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
     }, [classData, alloc])
 
     const applyPreset = (presetId: string) => {
+        if (ONBOARDING_STAT_POINTS <= 0) return
         const preset = PRESETS.find(p => p.id === presetId)
         if (!preset) return
         setAlloc({
@@ -189,6 +194,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
     }
 
     const adjust = (key: InitialStatKey, delta: 1 | -1) => {
+        if (ONBOARDING_STAT_POINTS <= 0) return
         setAlloc(prev => {
             const next = { ...prev }
             const current = next[key]
@@ -207,7 +213,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
 
     const handleCreate = async () => {
         if (!username.trim()) return
-        if (pointsLeft !== 0) {
+        if (ONBOARDING_STAT_POINTS > 0 && pointsLeft !== 0) {
             alert(`Distribua todos os ${ONBOARDING_STAT_POINTS} pontos iniciais.`)
             return
         }
@@ -352,47 +358,57 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
                             <div className="pt-2 border-t border-white/10">
                                 <div className="flex justify-between items-center mb-3">
                                     <h3 className="text-gold uppercase text-[10px] tracking-[0.3em] font-black">Recursos Iniciais</h3>
-                                    <span className={`text-[10px] font-black px-3 py-1 rounded-sm border-2 ${pointsLeft === 0 ? 'bg-green-900/40 border-green-400/50 text-green-400' : 'bg-gold/10 border-gold/30 text-gold'}`}>
-                                        {pointsLeft} PTS RESTANTES
+                                    <span className="text-[10px] font-black px-3 py-1 rounded-sm border-2 bg-green-900/40 border-green-400/50 text-green-400">
+                                        5 PTS LIVRES APÓS CRIAR
                                     </span>
                                 </div>
-                                <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
-                                    Distribua exatamente {ONBOARDING_STAT_POINTS} pontos iniciais.
-                                </div>
+                                {ONBOARDING_STAT_POINTS > 0 ? (
+                                    <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
+                                        Distribua exatamente {ONBOARDING_STAT_POINTS} pontos iniciais.
+                                    </div>
+                                ) : (
+                                    <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-3">
+                                        Atributos iniciais sem distribuição manual. Use os 5 pontos na aba de status após criar.
+                                    </div>
+                                )}
 
-                                <div className="grid grid-cols-1 gap-2">
-                                    {STAT_KEYS.map((key) => (
-                                        <div key={key} className="bg-white/5 px-3 py-2 flex items-center justify-between group hover:bg-white/10 transition-all">
-                                            <span className="text-xs text-gray-200 uppercase font-black tracking-widest">
-                                                {key === 'strength' ? 'Força' : key === 'defense' ? 'Defesa' : key === 'agility' ? 'Agilidade' : key === 'accuracy' ? 'Pontaria' : 'Vigor'}
-                                            </span>
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={() => adjust(key, -1)} className="w-8 h-8 flex items-center justify-center border border-white/20 text-gray-400 hover:text-white hover:border-white transition-all text-lg bg-white/5">-</button>
-                                                <span className="w-4 text-center text-sm font-black text-white">{alloc[key]}</span>
-                                                <button onClick={() => adjust(key, 1)} className="w-8 h-8 flex items-center justify-center border border-white/20 text-gray-400 hover:text-white hover:border-white transition-all text-lg bg-white/5">+</button>
-                                            </div>
+                                {ONBOARDING_STAT_POINTS > 0 && (
+                                    <>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {STAT_KEYS.map((key) => (
+                                                <div key={key} className="bg-white/5 px-3 py-2 flex items-center justify-between group hover:bg-white/10 transition-all">
+                                                    <span className="text-xs text-gray-200 uppercase font-black tracking-widest">
+                                                        {key === 'strength' ? 'Força' : key === 'defense' ? 'Defesa' : key === 'agility' ? 'Agilidade' : key === 'accuracy' ? 'Pontaria' : 'Vigor'}
+                                                    </span>
+                                                    <div className="flex items-center gap-3">
+                                                        <button onClick={() => adjust(key, -1)} className="w-8 h-8 flex items-center justify-center border border-white/20 text-gray-400 hover:text-white hover:border-white transition-all text-lg bg-white/5">-</button>
+                                                        <span className="w-4 text-center text-sm font-black text-white">{alloc[key]}</span>
+                                                        <button onClick={() => adjust(key, 1)} className="w-8 h-8 flex items-center justify-center border border-white/20 text-gray-400 hover:text-white hover:border-white transition-all text-lg bg-white/5">+</button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                    <button
-                                        onClick={() => applyClassDefaultPreset(selectedClass)}
-                                        className="px-2 py-1 text-[9px] border border-gold/30 text-gold hover:bg-gold/10 uppercase transition-all font-black"
-                                    >
-                                        Pre-Build da Classe
-                                    </button>
-                                    <button
-                                        onClick={() => setAlloc({ ...EMPTY_ALLOC })}
-                                        className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-white hover:border-white uppercase transition-all font-black"
-                                    >
-                                        Resetar Build
-                                    </button>
-                                    {PRESETS.map(p => (
-                                        <button key={p.id} onClick={() => applyPreset(p.id)} className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-gold hover:border-gold uppercase transition-all font-black">
-                                            {p.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            <button
+                                                onClick={() => applyClassDefaultPreset(selectedClass)}
+                                                className="px-2 py-1 text-[9px] border border-gold/30 text-gold hover:bg-gold/10 uppercase transition-all font-black"
+                                            >
+                                                Pre-Build da Classe
+                                            </button>
+                                            <button
+                                                onClick={() => setAlloc({ ...EMPTY_ALLOC })}
+                                                className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-white hover:border-white uppercase transition-all font-black"
+                                            >
+                                                Resetar Build
+                                            </button>
+                                            {PRESETS.map(p => (
+                                                <button key={p.id} onClick={() => applyPreset(p.id)} className="px-2 py-1 text-[9px] border border-white/10 text-gray-400 hover:text-gold hover:border-gold uppercase transition-all font-black">
+                                                    {p.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="space-y-2 pt-2 border-t border-white/10">
@@ -406,7 +422,7 @@ export default function ClassSelectionScreen({ userId, onCreated }: ClassSelecti
                                 />
                                 <button
                                     onClick={handleCreate}
-                                    disabled={isCreating || !username.trim() || pointsLeft !== 0}
+                                    disabled={isCreating || !username.trim() || (ONBOARDING_STAT_POINTS > 0 && pointsLeft !== 0)}
                                     className="btn-western w-full py-4 text-base font-black tracking-[0.2em] flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale transition-all"
                                 >
                                     {isCreating ? 'PROCESSANDO...' : 'INICIAR JORNADA'}

@@ -1,29 +1,33 @@
-### Estado Atual do Projeto
-O projeto está estável, seguro e com interface refinada. O ciclo de hardening de segurança foi concluído com sucesso e a interface do inventário agora possui uma legenda clara para os atributos. Erros de build e de versão do React foram resolvidos.
+## Project Status - 2026-03-10
 
-### Funcionalidades Implementadas
-- 🛡️ **Segurança Hardened**: Operações críticas de HP, Energia e Recompensas movidas 100% para o server-side.
-- 💎 **Novos Itens Épicos e Lendários**: Adicionados conjuntos "Lobo da Tempestade", "Xamã da Tormenta" e "Fantasma do Deserto".
-- 🧩 **Sistema de Relíquias**: Implementado suporte inicial a itens do tipo `relic` com efeitos bônus.
-- 🖼️ **Geração de Assets via AI**: Scripts integrados para Gemini e Leonardo.ai.
+### Resumo
+O projeto esta funcional e com progresso consistente em combate, economia, itens e progressao. As tarefas recentes pedidas foram implementadas no codigo e validadas com lint.
 
-## Pendências Imediatas
-- 🖼️ **Gerar Imagens dos Novos Itens**: Bloqueado por limite de API (Gemini/Leonardo/Interno).
-- 🎨 **UI de Relíquias**: Criar os slots dedicados na UI de personagem.
+### Concluido
+- Seguranca server-side para acoes criticas de jogo.
+- Sistema de imagens com compressao automatica no build/dev (`prebuild` e `predev` com `scripts/optimize-images.mjs`).
+- Rebalanceamento global de itens (peso por raridade/slot/preco) com controle de `vigor`.
+- Progressao com limite de nivel maximo `60`.
+- Nova curva de XP mais dificil para progressao ate o nivel maximo.
+- Rebalanceamento de recompensas de arena (XP/Gold) com multiplicador por dificuldade relativa.
+- Rebalanceamento de recompensas de jobs com penalidade anti-farm para jobs muito abaixo do nivel do jogador.
+- Limitadores de atributos base no backend (`strength/defense/agility/accuracy/vigor` com cap de 80).
+- Onboarding atualizado: criacao sem distribuicao inicial e com `5` pontos livres para distribuir depois.
+- UI atualizada para curva de XP nova e exibicao de nivel maximo (`MAX`) em Header/Status.
 
-## Erros ou Bloqueios Conhecidos
-- 🚫 **API Quota Exhausted**: Gemini e Leonardo.ai atingiram o limite de uso diário/créditos.
-- 🚫 **Internal Tool Blocked**: Geração de imagem interna bloqueada por 90h.
+### Em Aberto / Dependencias Operacionais
+- Aplicar migration no banco para reforcar caps no Postgres:
+  - `supabase/migrations/20260310113000_cap_level_and_stats.sql`
+- Subir o ultimo lote de alteracoes para o GitHub (ainda local no workspace).
 
-## Próximos Passos Sugeridos
-1. **Aguardar reset de cota** ou **adicionar créditos** no Leonardo.ai/Gemini para processar as 18 imagens pendentes.
-2. Iniciar a implementação visual dos slots de Relíquias no Inventory/Profile.
-3. Otimizar os assets gerados para formato `.webp`.
-2. **Otimização de Performance:** Converter imagens para WebP para reduzir o tempo de carregamento inicial.
+### Arquivos-chave alterados nesta etapa
+- `src/app/api/game/action/route.ts`
+- `src/lib/progression.ts`
+- `src/components/Header.tsx`
+- `src/components/StatusTab.tsx`
+- `src/components/ClassSelectionScreen.tsx`
+- `src/lib/gameActions.ts`
+- `supabase/migrations/20260310113000_cap_level_and_stats.sql`
 
----
-
-### Registro de Atividade (2026-03-09)
-- **Hardening Finalizado:** Migração total das lógicas de mutação para o servidor.
-- **Inventory Refinement:** Inclusão de legenda de atributos `X (+y) (+z)`.
-- **Build Fix:** Cache `.next` removido para resolver conflitos de versão do React.
+### Validacao
+- `npm run lint` executado com sucesso.

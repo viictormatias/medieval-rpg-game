@@ -2,6 +2,7 @@
 
 import { Profile, getUserInventory, getJobs, claimJobAction, Job } from '@/lib/gameActions'
 import { getOptimizedAssetSrc } from '@/lib/assets'
+import { isMaxLevel, xpForNextLevel } from '@/lib/progression'
 import StatBar from './StatBar'
 import CharacterPortrait from './CharacterPortrait'
 import { getStatBonuses } from '@/lib/stats'
@@ -14,10 +15,6 @@ function getPlayerClass(level: number): string {
     if (level < 20) return 'Caçador de Recompensa'
     if (level < 35) return 'Lenda da Fronteira'
     return 'Rei do Gatilho'
-}
-
-function xpForNextLevel(level: number): number {
-    return level * 100
 }
 
 const CLASS_PORTRAITS: Record<string, string> = {
@@ -122,6 +119,9 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
     const bonuses = getStatBonuses(invItems)
     const playerClass = getPlayerClass(profile.level)
     const xpNeeded = xpForNextLevel(profile.level)
+    const cappedLevel = isMaxLevel(profile.level)
+    const xpBarValue = cappedLevel ? 1 : profile.xp
+    const xpBarMax = cappedLevel ? 1 : xpNeeded
     const gearHpBonus = bonuses.vigor
     const totalHpMax = profile.hp_max + gearHpBonus
     const totalHpCurrent = Math.min(totalHpMax, profile.hp_current + gearHpBonus)
@@ -267,14 +267,16 @@ export default function Header({ profile, onRefresh }: { profile: Profile; onRef
                         <span className="text-[10px] md:text-[12px] font-bold text-purple-400 w-10 md:w-12 text-right uppercase tracking-tight flex-shrink-0 text-[8px] md:text-[12px]">XP</span>
                         <div className="flex-1">
                             <StatBar
-                                value={profile.xp % xpNeeded}
-                                max={xpNeeded}
+                                value={xpBarValue}
+                                max={xpBarMax}
                                 type="xp"
                                 label="Experiência"
                                 showValues={false}
                             />
                         </div>
-                        <span className="text-[10px] md:text-[12px] text-gray-500 flex-shrink-0 font-mono hidden md:inline">{profile.xp % xpNeeded}/{xpNeeded}</span>
+                        <span className="text-[10px] md:text-[12px] text-gray-500 flex-shrink-0 font-mono hidden md:inline">
+                            {cappedLevel ? 'MAX' : `${profile.xp}/${xpNeeded}`}
+                        </span>
                     </div>
                 </div>
             </div>

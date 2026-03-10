@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Profile, getUserInventory } from '@/lib/gameActions'
 import { supabase } from '@/lib/supabase'
 import { getItemById } from '@/lib/items'
+import { isMaxLevel, xpForNextLevel } from '@/lib/progression'
 import { deriveSoulsStats } from '@/lib/soulslike'
 import CharacterPortrait from './CharacterPortrait'
 
@@ -149,7 +150,8 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
         setPending({ strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 })
     }
 
-    const xpToNext = profile.level * 100
+    const xpToNext = xpForNextLevel(profile.level)
+    const cappedLevel = isMaxLevel(profile.level)
     const trend = buildTrend(profile)
 
     return (
@@ -180,9 +182,9 @@ export default function StatusTab({ profile, onRefresh }: StatusTabProps) {
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] md:text-sm text-[#9ca3af] uppercase tracking-[0.2em] font-black">
                             <span>Experiência</span>
-                            <span className="text-[#a855f7] font-mono font-bold">{profile.xp} / {xpToNext} XP</span>
+                            <span className="text-[#a855f7] font-mono font-bold">{cappedLevel ? 'NIVEL MAXIMO' : `${profile.xp} / ${xpToNext} XP`}</span>
                         </div>
-                        <Bar value={profile.xp} max={xpToNext} color="#a855f7" height={8} />
+                        <Bar value={cappedLevel ? 1 : profile.xp} max={cappedLevel ? 1 : xpToNext} color="#a855f7" height={8} />
                     </div>
                 </div>
             </div>
