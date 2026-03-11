@@ -209,12 +209,12 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         const req = item ? checkItemRequirements(profile, item) : null
 
         const tooltipClasses = tooltipSide === "left" 
-            ? "absolute top-0 right-full mr-3 w-64 p-4 bg-black/90 border border-gold/30 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-[999] pointer-events-none shadow-2xl"
-            : "absolute top-0 left-full ml-3 w-64 p-4 bg-black/90 border border-gold/30 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-[999] pointer-events-none shadow-2xl";
+            ? "absolute top-0 right-full mr-3 w-64 p-4 bg-black/95 border-2 border-gold/50 rounded-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-[10000] pointer-events-none shadow-[0_0_30px_rgba(0,0,0,0.8)]"
+            : "absolute top-0 left-full ml-3 w-64 p-4 bg-black/95 border-2 border-gold/50 rounded-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-[10000] pointer-events-none shadow-[0_0_30px_rgba(0,0,0,0.8)]";
 
         return (
             <div
-                className="group relative w-16 h-16 bg-black/40 border-2 transition-all flex items-center justify-center rounded-sm"
+                className="group relative w-16 h-16 bg-black/40 border-2 transition-all flex items-center justify-center rounded-sm hover:z-50"
                 style={{
                     borderColor: item ? (req?.meets ? rc?.border : '#8b0000') : '#423020',
                     boxShadow: item ? `0 0 10px ${req?.meets ? rc?.glow : 'rgba(139,0,0,0.3)'}` : 'none'
@@ -319,7 +319,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     return (
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6 h-full min-h-[500px] lg:min-h-[600px]">
             {/* LADO ESQUERDO: MOCHILA */}
-            <div className="flex-1 western-border p-3 md:p-4 bg-black/40 flex flex-col order-2 lg:order-1">
+            <div className="flex-1 western-border p-3 md:p-4 bg-black/40 flex flex-col order-2 lg:order-1 relative z-10 hover:z-20">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-4">
                     <h2 className="title-western text-lg md:text-xl text-gold uppercase tracking-widest flex items-center gap-2">
                         Bolsa de Viagem
@@ -365,7 +365,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                                             <span className="absolute bottom-0.5 right-0.5 text-[8px] md:text-xs font-black text-white bg-black/80 px-1 md:px-2 py-0.5 rounded-sm border border-white/10">x{item.quantity}</span>
                                         )}
                                         {/* Tooltip de status para itens da mochila (desktop) */}
-                                        <div className="hidden md:group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 p-3 bg-black/95 border border-gold/40 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl text-left">
+                                        <div className="hidden md:group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 p-3 bg-black/95 border-2 border-gold/50 rounded-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-[10000] pointer-events-none shadow-[0_0_30px_rgba(0,0,0,0.8)] text-left">
                                             <div className="text-base text-gold font-bold truncate mb-1">{item.name}</div>
                                             <div className="mb-2">
                                                 <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-sm border border-white/15 text-gray-300 bg-black/30">
@@ -481,7 +481,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
             </div>
 
             {/* LADO DIREITO: PERSONAGEM & STATUS */}
-            <div className="w-full lg:w-[420px] western-border bg-black/60 p-4 md:p-5 flex flex-col gap-4 md:gap-6 relative overflow-hidden order-1 lg:order-2">
+            <div className="w-full lg:w-[420px] western-border bg-black/60 p-4 md:p-5 flex flex-col gap-4 md:gap-6 relative order-1 lg:order-2 z-10 hover:z-20">
                 {/* Background Decor */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-sm">
                     <div className="absolute inset-0 opacity-5 flex items-center justify-center">

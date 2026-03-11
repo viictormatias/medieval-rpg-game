@@ -1,24 +1,29 @@
-# Status do Projeto - Far West RPG
+# Far West - Status do Projeto
 
-## 1. Estado Atual
-O jogo está estável, com as mecânicas de progressão (nível 60) e caps de status (80) implementados. A economia e os itens foram balanceados. A interface de inventário e duelo está refinada.
+## Estado Atual
+O projeto está em fase de polimento de UI e expansão de conteúdo (legendários). Recentemente foram implementadas correções críticas nos tooltips do inventário para garantir visibilidade total.
 
-## 2. Funcionalidades Implementadas
-- **Cap de Nível:** 60 (com curva de XP ajustada).
-- **Cap de Atributos:** 80 (via banco de dados).
-- **Rebalanceamento Total:** Todos os itens de sets e base ajustados.
-- **Novas Armas Lendárias:** Imagens ultra-realistas geradas e aplicadas nos sets (Lobo, Xama, Fantasma, Xerife).
-- **Correção de Jobs:** Buffer de tempo adicionado para evitar erros de coleta (Corrigido).
+## Funcionalidades Implementadas
+- **Sistema de Duelo (Arena):** Combate funcional com log em tempo real e barras dinâmicas.
+- **Inventário:** Gerenciamento de itens, equipamentos e consumíveis.
+- **Loja da Fronteira:** Compra e venda de itens com requisitos Souls-like.
+- **Atributos:** FOR, DEF, AGI, PON, VIG com scaling em armas e bônus de equipamento.
+- **Artes Lendárias:** 50+ novas imagens realistas para armas e acessórios de tier alto.
+- **Correção de UI (Tooltips):** 
+    - Tooltips de itens equipados agora detectam a borda da tela e abrem para a esquerda.
+    - Z-index forçado (10000) para garantir que o card flutue sobre qualquer outro container.
+    - Removido `overflow-hidden` dos painéis principais que causavam corte lateral (clipping).
 
-## 3. Pendências Imediatas
-- Gerar imagens únicas para os 12 cards de trabalho (Aguardando reset de cota ou nova chave API).
-- Aplicar melhorias em itens comuns/incomuns que ainda usam templates repetidos (hue-shift).
+## Pendências Imediatas
+1. **Cards de Trabalho:** Gerar 12 artes únicas para as missões (Aguardando reset de cota de API).
+2. **Comparação de Itens:** Implementar visualização de "Equipado vs. Selecionado" no inventário.
+3. **Equilíbrio:** Revisar tabelas de XP e dano para o endgame (Nível 50-60).
 
-## 4. Erros ou Bloqueios Conhecidos
-- **API Quota:** Chaves de API atuais (Gemini/Leonardo) atingiram o limite de uso automatizado hoje.
-- **Geração Interna:** A cota interna de geração de imagens também foi atingida durante esta sessão.
+## Erros ou Bloqueios Conhecidos
+- **Cota de API:** Limite diário atingido para geração de novas imagens hoje.
+- **Build Cache:** Recomenda-se rodar `rm -rf .next` caso ocorram erros de 404 em arquivos internos após grandes mudanças.
 
-## 5. Próximos Passos Sugeridos
-1. Assim que a cota resetar, rodar `node scripts/generate-job-images.mjs` para finalizar os cards de trabalho.
-2. Identificar mais 10 armas de tiers inferiores que ainda usam imagens repetidas para substituição.
-3. Testar o fluxo de "Claim Job" no jogo para confirmar se o buffer de 2s resolveu o problema para o usuário.
+## Próximos Passos Sugeridos
+1. **Geração de Imagens:** Assim que a cota resetar, rodar `node scripts/generate-job-images.mjs`.
+2. **Refonte de Itens:** Substituir as imagens de itens genéricos (poções, botas simples) por versões geradas mais únicas.
+3. **Feedback Sonoro:** Adicionar efeitos de áudio para cliques, compras e disparos na arena.
