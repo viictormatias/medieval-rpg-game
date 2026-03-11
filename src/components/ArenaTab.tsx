@@ -265,8 +265,6 @@ function getEnemyMaxHp(enemy: Enemy, catalog: Item[]) {
     return base.hp_max + getEnemyEquipmentHpBonus(enemy, catalog)
 }
 
-type CombatLogEntry = NarrativeTurn & { isNew?: boolean }
-
 function ItemIcon({ item, className = "" }: { item: Item; className?: string }) {
     const [imgError, setImgError] = useState(false)
     const displayUrl = getOptimizedAssetSrc(item.image_url)
@@ -284,6 +282,8 @@ function ItemIcon({ item, className = "" }: { item: Item; className?: string }) 
 
     return <span className="text-sm leading-none">{item.icon}</span>
 }
+
+type CombatLogEntry = NarrativeTurn & { isNew?: boolean }
 
 export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onRefresh: () => void }) {
     type EnemyTier = 'tier1' | 'tier2'
@@ -310,6 +310,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
     const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
+    const [lightboxRequirements, setLightboxRequirements] = useState<Record<string, number> | undefined>(undefined)
     const [soulsSnapshot, setSoulsSnapshot] = useState<SoulsDerivedStats | null>(null)
     const [playerEquipment, setPlayerEquipment] = useState<{ weapon: Item | null, armor: Item[] }>({ weapon: null, armor: [] })
     const logEndRef = useRef<HTMLDivElement>(null)
@@ -377,7 +378,6 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         }
     }, [enemyTier, enemies])
 
-
     const handleEnemyChange = (id: string) => {
         const en = filteredEnemies.find(e => e.id === id) || null
         setSelectedEnemy(en)
@@ -400,6 +400,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         setLightboxSrc(item.image_url)
         setLightboxAlt(item.name)
         setLightboxStats(item.stats || undefined)
+        setLightboxRequirements(item.requirements || undefined)
     }
 
     const handleFight = async () => {
@@ -441,10 +442,9 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         const souls = deriveSoulsStats(profile, equippedItems as any)
         setSoulsSnapshot(souls)
 
-        const playerMaxHp = profile.hp_max + (souls.hpBonus || 0)
         const playerFighter: Fighter = {
             name: profile.username,
-            hp: profile.hp_current + (souls.hpBonus || 0), // Start with current + bonus (assuming fully healed for bonus)
+            hp: profile.hp_current + (souls.hpBonus || 0),
             strength: souls.attackRating,
             defense: profile.defense + souls.bonuses.defense,
             agility: profile.agility + souls.bonuses.agility,
@@ -501,7 +501,6 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                 }
             }
 
-            // if skipped, we don't bother triggering shake, we just update the logs and HPs
             if (turn.damage > 0) {
                 if (attackerName === playerName) {
                     setEnemyHp(turn.resultHp);
@@ -617,12 +616,6 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
     const playerHpPct = Math.max(0, (playerHp / playerMaxHp) * 100)
     const enemyHpPct = Math.max(0, (enemyHp / enemyHpMax) * 100)
 
-    const totalStrength = profile.strength + (soulsSnapshot?.bonuses.strength || 0)
-    const totalDefense = profile.defense + (soulsSnapshot?.bonuses.defense || 0)
-    const totalAgility = profile.agility + (soulsSnapshot?.bonuses.agility || 0)
-    const totalAccuracy = profile.accuracy + (soulsSnapshot?.bonuses.accuracy || 0)
-    const totalVigor = profile.vigor + (soulsSnapshot?.bonuses.vigor || 0)
-
     // Calculate Enemy Bonus Stats from Equipment
     let enemyBonusStrength = 0
     let enemyBonusDefense = 0
@@ -651,7 +644,6 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                 backgroundPosition: 'center',
                 backgroundAttachment: 'fixed'
             }}>
-            {/* Combat status is now moved into the central column */}
 
             {/* THREE COLUMN LAYOUT ON DESKTOP */}
             <div className="flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-4 h-full min-h-0">
@@ -676,7 +668,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                             isHit={playerHit}
                         />
 
-                        {/* Player Stats (TOTAL (+BÔNUS)) */}
+                        {/* Player Stats */}
                         <div className="grid grid-cols-5 gap-2 flex-1 py-2 border-l border-[#3a2a1a] pl-3">
                             {[
                                 { label: 'FOR', base: profile.strength, bonus: soulsSnapshot?.bonuses.strength || 0 },
@@ -718,18 +710,13 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                                     >
                                         <ItemIcon item={item} />
                                     </button>
-                                ));
+                                ))
                             })()}
                         </div>
 
                         {/* VS Overlay */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
                             <div className="text-3xl md:text-4xl lg:text-5xl font-black text-[#a52a2a] italic tracking-tighter drop-shadow-2xl animate-pulse">VS</div>
-                            {isFighting && (
-                                <div className="text-[8px] md:text-[9px] text-gold font-bold uppercase tracking-[0.2em] mt-1">
-                                    Trocando Tiros
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -881,7 +868,7 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                                     size="md"
                                     isHit={enemyHit}
                                 />
-                                {/* Enemy Stats (TOTAL = BASE + BÔNUS) */}
+                                {/* Enemy Stats */}
                                 <div className="grid grid-cols-5 gap-2 flex-1 py-2 border-l border-[#3a2a1a] pl-3">
                                     {[
                                         { label: 'FOR', base: enemyBase?.strength ?? selectedEnemy.strength, bonus: enemyBonusStrength },
@@ -910,17 +897,19 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                                         const allItems = [enemyEquipment?.weapon, ...(enemyEquipment?.armor || [])].filter(Boolean) as Item[];
                                         if (allItems.length === 0) return <span className="text-[10px] text-gray-600 italic">Sem equipamento</span>;
                                         return allItems.map((item, idx) => (
-                                            <div key={idx}
-                                                className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group"
+                                            <button key={idx}
+                                                type="button"
+                                                className="w-8 h-8 bg-black/80 border-2 flex items-center justify-center shadow-inner rounded-sm overflow-hidden relative group cursor-pointer transition-transform hover:scale-105"
                                                 style={{
                                                     borderColor: RARITY_COLORS[item.rarity || 'common'].border,
                                                     boxShadow: `0 0 6px ${RARITY_COLORS[item.rarity || 'common'].glow}`
                                                 }}
                                                 title={item.name}
+                                                onClick={() => openItemLightbox(item)}
                                             >
                                                 <ItemIcon item={item} />
-                                            </div>
-                                        ));
+                                            </button>
+                                        ))
                                     })()}
                                 </div>
                             </div>
@@ -940,9 +929,11 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
                     setLightboxSrc(null)
                     setLightboxAlt(null)
                     setLightboxStats(undefined)
+                    setLightboxRequirements(undefined)
                 }}
                 alt={lightboxAlt || undefined}
                 stats={lightboxStats}
+                requirements={lightboxRequirements}
             />
         </div>
     )

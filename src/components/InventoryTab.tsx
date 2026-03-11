@@ -47,6 +47,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
     const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
+    const [lightboxRequirements, setLightboxRequirements] = useState<Record<string, number> | undefined>(undefined)
     const [activeBagIndex, setActiveBagIndex] = useState<number>(0)
 
     const FILTER_LABELS: Record<'all' | ItemType, string> = {
@@ -192,6 +193,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                 setLightboxSrc(item.image_url)
                 setLightboxAlt(item.name)
                 setLightboxStats(item.stats)
+                setLightboxRequirements(item.requirements)
             } else if (req?.meets) {
                 // Only auto-equip if requirements are met and there's no image to show
                 handleToggleEquip(item.inventory_id)
@@ -202,9 +204,13 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     }
 
     /* Slot Component */
-    const EquipmentSlot = ({ item, slotType, icon, label, className }: { item: any, slotType: ItemType, icon: string, label: string, className?: string }) => {
+    const EquipmentSlot = ({ item, slotType, icon, label, className = "", tooltipSide = "right" }: { item: any, slotType: ItemType, icon: string, label: string, className?: string, tooltipSide?: "left" | "right" }) => {
         const rc = item ? (RARITY_COLORS[getRarity(item)] || RARITY_COLORS.common) : null
         const req = item ? checkItemRequirements(profile, item) : null
+
+        const tooltipClasses = tooltipSide === "left" 
+            ? "absolute top-0 right-full mr-3 w-64 p-4 bg-black/90 border border-gold/30 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-[999] pointer-events-none shadow-2xl"
+            : "absolute top-0 left-full ml-3 w-64 p-4 bg-black/90 border border-gold/30 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-[999] pointer-events-none shadow-2xl";
 
         return (
             <div
@@ -221,6 +227,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                             setLightboxSrc(item.image_url)
                             setLightboxAlt(item.name)
                             setLightboxStats(item.stats)
+                            setLightboxRequirements(item.requirements)
                         } else {
                             handleToggleEquip(item.inventory_id)
                         }
@@ -234,7 +241,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                 )}
 
                 {/* Tooltip */}
-                <div className="absolute top-0 left-full ml-3 w-64 p-4 bg-black/90 border border-gold/30 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-[999] pointer-events-none shadow-2xl">
+                <div className={tooltipClasses}>
                     <div className="text-base font-bold text-gold uppercase tracking-wider">{label}</div>
                     {item ? (
                         <>
@@ -246,16 +253,23 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                             </div>
 
                             {/* Requisitos no hover do equipado */}
-                            {item.requirements && !req?.meets && (
-                                <div className="mt-2 mb-2 p-1.5 bg-red-950/30 border border-red-900/50 rounded-sm">
-                                    <div className="text-[10px] text-red-400 font-black uppercase mb-1">Requisitos Insuficientes</div>
+                            {item.requirements && (
+                                <div className={`mt-2 mb-2 p-1.5 border rounded-sm ${req?.meets ? 'bg-gold/5 border-gold/30' : 'bg-red-950/30 border-red-900/50'}`}>
+                                    <div className={`text-[10px] font-black uppercase mb-1 ${req?.meets ? 'text-gold' : 'text-red-400'}`}>
+                                        Requisitos {req?.meets ? 'Atendidos' : 'Insuficientes'}
+                                    </div>
                                     <div className="space-y-0.5">
-                                        {req?.unmet.map((u: any) => (
-                                            <div key={u.attr} className="text-[11px] text-red-300 flex justify-between">
-                                                <span>{u.attr === 'strength' ? '⚔️ FOR' : u.attr === 'agility' ? '💨 AGI' : u.attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {u.needed}</span>
-                                                <span className="font-black">Faltam {u.diff}</span>
-                                            </div>
-                                        ))}
+                                        {Object.entries(item.requirements as Record<string, number>).map(([attr, needed]) => {
+                                            const current = (profile as any)[attr] || 0
+                                            const isMet = current >= needed
+                                            return (
+                                                <div key={attr} className={`text-[11px] flex justify-between ${isMet ? 'text-gray-300' : 'text-red-300'}`}>
+                                                    <span>{attr === 'strength' ? '⚔️ FOR' : attr === 'agility' ? '💨 AGI' : attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {needed}</span>
+                                                    {!isMet && <span className="font-black">Faltam {needed - current}</span>}
+                                                    {isMet && <span className="text-[9px] opacity-50">✓</span>}
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -315,7 +329,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                             <button
                                 key={f}
                                 onClick={() => setFilter(f as any)}
-                                className={`px-2 md:px-4 py-1.5 md:py-2 text-[10px] md:text-sm uppercase font-black border transition-all ${filter === f ? 'border-gold text-gold bg-gold/10 shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'border-white/10 text-gray-500 hover:text-white'}`}
+                                className={`px-2 md:px-4 py-1.5 md:py-2 text-[10px] md:text-sm uppercase font-black border transition-all ${filter === f ? 'border-gold text-gold bg-gold/10 shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'border-white/10 text-gray-400 hover:text-white'}`}
                             >
                                 {FILTER_LABELS[f as 'all' | ItemType] || f}
                             </button>
@@ -360,16 +374,23 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                                             </div>
 
                                             {/* Requisitos no hover da mochila */}
-                                            {item.requirements && !req?.meets && (
-                                                <div className="mb-2 p-1.5 bg-red-950/30 border border-red-900/50 rounded-sm">
-                                                    <div className="text-[9px] text-red-400 font-black uppercase mb-1">Status Insuficientes</div>
+                                            {item.requirements && (
+                                                <div className={`mb-2 p-1.5 border rounded-sm ${req?.meets ? 'bg-gold/5 border-gold/30' : 'bg-red-950/30 border-red-900/50'}`}>
+                                                    <div className={`text-[9px] font-black uppercase mb-1 ${req?.meets ? 'text-gold' : 'text-red-400'}`}>
+                                                        Requisitos {req?.meets ? 'Atendidos' : 'Insuficientes'}
+                                                    </div>
                                                     <div className="space-y-0.5">
-                                                        {req?.unmet.map((u: any) => (
-                                                            <div key={u.attr} className="text-[10px] text-red-300 flex justify-between">
-                                                                <span>{u.attr === 'strength' ? '⚔️ FOR' : u.attr === 'agility' ? '💨 AGI' : u.attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {u.needed}</span>
-                                                                <span className="font-black">-{u.diff}</span>
-                                                            </div>
-                                                        ))}
+                                                        {Object.entries(item.requirements as Record<string, number>).map(([attr, needed]) => {
+                                                            const current = (profile as any)[attr] || 0
+                                                            const isMet = current >= needed
+                                                            return (
+                                                                <div key={attr} className={`text-[10px] flex justify-between ${isMet ? 'text-gray-300' : 'text-red-300'}`}>
+                                                                    <span>{attr === 'strength' ? '⚔️ FOR' : attr === 'agility' ? '💨 AGI' : attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {needed}</span>
+                                                                    {!isMet && <span className="font-black">-{needed - current}</span>}
+                                                                    {isMet && <span className="text-[8px] opacity-50">✓</span>}
+                                                                </div>
+                                                            )
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
@@ -474,25 +495,25 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
 
                 <div className="flex flex-col md:flex-row lg:flex-col gap-4 relative z-10">
                     {/* Character Equipment Layout */}
-                    <div className="flex-1 flex flex-col items-center gap-4">
-                        <EquipmentSlot item={equippedHelmet} slotType="helmet" icon="🤠" label="Cabeça" />
+                        <div className="flex-1 flex flex-col items-center gap-4">
+                        <EquipmentSlot item={equippedHelmet} slotType="helmet" icon="🤠" label="Cabeça" tooltipSide="left" />
 
                         <div className="flex gap-4 items-center">
-                            <EquipmentSlot item={equippedWeapon} slotType="weapon" icon="🔫" label="Mão Principal" />
-                            <EquipmentSlot item={equippedChest} slotType="chest" icon="🧥" label="Tronco" />
-                            <EquipmentSlot item={equippedShield} slotType="shield" icon="🔰" label="Acessório Defensivo" />
+                            <EquipmentSlot item={equippedWeapon} slotType="weapon" icon="🔫" label="Mão Principal" tooltipSide="left" />
+                            <EquipmentSlot item={equippedChest} slotType="chest" icon="🧥" label="Tronco" tooltipSide="left" />
+                            <EquipmentSlot item={equippedShield} slotType="shield" icon="🔰" label="Acessório Defensivo" tooltipSide="left" />
                         </div>
 
                         <div className="flex gap-8 md:gap-12">
                             <div className="flex flex-col gap-4">
-                                <EquipmentSlot item={equippedGloves} slotType="gloves" icon="🧤" label="Luvas" />
+                                <EquipmentSlot item={equippedGloves} slotType="gloves" icon="🧤" label="Luvas" tooltipSide="left" />
                                 <div className="w-14 h-14 md:w-16 md:h-16 border-2 border-dashed border-white/5 flex items-center justify-center opacity-20">
                                     <span className="text-xl">💍</span>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-4">
-                                <EquipmentSlot item={equippedLegs} slotType="legs" icon="👖" label="Pernas" />
-                                <EquipmentSlot item={equippedBoots} slotType="boots" icon="🥾" label="Pés" />
+                                <EquipmentSlot item={equippedLegs} slotType="legs" icon="👖" label="Pernas" tooltipSide="left" />
+                                <EquipmentSlot item={equippedBoots} slotType="boots" icon="🥾" label="Pés" tooltipSide="left" />
                             </div>
                         </div>
                     </div>
@@ -502,8 +523,8 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                         <div className="hidden md:block bg-black/60 border border-gold/20 p-3 rounded-sm space-y-3">
                             <h3 className="text-[10px] text-gold font-bold uppercase border-b border-gold/20 pb-1 text-center">Relíquias</h3>
                             <div className="flex flex-row md:flex-col gap-2 items-center justify-center">
-                                <EquipmentSlot item={equippedRelics[0]} slotType="relic" icon="💎" label="Relíquia" className="w-14 h-14 md:w-16 md:h-16 block" />
-                                <EquipmentSlot item={equippedRelics[1]} slotType="relic" icon="💎" label="Relíquia" className="w-14 h-14 md:w-16 md:h-16 block" />
+                                <EquipmentSlot item={equippedRelics[0]} slotType="relic" icon="💎" label="Relíquia" className="w-14 h-14 md:w-16 md:h-16 block" tooltipSide="left" />
+                                <EquipmentSlot item={equippedRelics[1]} slotType="relic" icon="💎" label="Relíquia" className="w-14 h-14 md:w-16 md:h-16 block" tooltipSide="left" />
                             </div>
                         </div>
 
@@ -579,9 +600,11 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
                 onClose={() => {
                     setLightboxSrc(null)
                     setLightboxStats(undefined)
+                    setLightboxRequirements(undefined)
                 }}
                 alt={lightboxAlt || undefined}
                 stats={lightboxStats}
+                requirements={lightboxRequirements}
             />
         </div>
 

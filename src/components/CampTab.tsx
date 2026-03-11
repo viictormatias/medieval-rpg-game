@@ -112,7 +112,11 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
         setIsClaiming(true)
         const success = await claimJobAction(profile, job)
         setIsClaiming(false)
-        if (success) onRefresh()
+        if (success) {
+            onRefresh()
+        } else {
+            alert('Falha ao coletar recompensa. O trabalho pode não estar pronto no servidor ou houve um erro de conexão.')
+        }
     }
 
     return (

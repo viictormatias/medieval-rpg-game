@@ -567,7 +567,7 @@ export async function POST(req: Request) {
         return fail('Você não tem trabalho para coletar.')
       }
 
-      if (Date.now() < new Date(profile.job_finish_at).getTime()) {
+      if (Date.now() + 2000 < new Date(profile.job_finish_at).getTime()) {
         return fail('Trabalho ainda não foi concluído.')
       }
 

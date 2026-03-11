@@ -10,9 +10,10 @@ interface LightboxProps {
     onClose: () => void
     alt?: string
     stats?: Record<string, number>
+    requirements?: Record<string, number>
 }
 
-export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxProps) {
+export default function Lightbox({ src, isOpen, onClose, alt, stats, requirements }: LightboxProps) {
     const [mounted, setMounted] = useState(false)
     const formatSigned = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
     const optimizedSrc = getOptimizedAssetSrc(src)
@@ -68,27 +69,49 @@ export default function Lightbox({ src, isOpen, onClose, alt, stats }: LightboxP
                     </div>
 
                     {/* Painel Lateral de Stats (Condicional) */}
-                    {stats && Object.keys(stats).length > 0 && (
-                        <div className="w-full md:w-64 western-border bg-black/80 p-5 flex flex-col gap-4 animate-in slide-in-from-right-4 duration-500">
-                            <h3 className="title-western text-gold text-center text-lg border-b border-gold/20 pb-2 tracking-widest">
-                                Atributos
-                            </h3>
-                            <div className="space-y-3">
-                                {Object.entries(stats).map(([stat, val]) => (
-                                    <div key={stat} className="flex justify-between items-center bg-gold/5 border border-gold/10 p-2 rounded-sm">
-                                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">
-                                            {stat === 'strength' ? 'Força' :
-                                                stat === 'agility' ? 'Agilidade' :
-                                                    stat === 'accuracy' ? 'Pontaria' :
-                                                        stat === 'vigor' ? 'Vigor' :
-                                                            stat === 'defense' ? 'Defesa' :
-                                                                stat === 'hp_current' ? 'Vida' :
-                                                                    stat === 'energy' ? 'Energia' : stat}
-                                        </span>
-                                        <span className="text-gold font-bold text-sm">{formatSigned(Number(val))}</span>
+                    {((stats && Object.keys(stats).length > 0) || (requirements && Object.keys(requirements).length > 0)) && (
+                        <div className="w-full md:w-72 western-border bg-black/90 p-5 flex flex-col gap-4 animate-in slide-in-from-right-4 duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                            {requirements && Object.keys(requirements).length > 0 && (
+                                <>
+                                    <h4 className="text-[10px] text-red-500/80 font-black uppercase tracking-widest text-center border-b border-red-900/20 pb-1">
+                                        Requisitos de Uso
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {Object.entries(requirements).map(([attr, needed]) => (
+                                            <div key={attr} className="flex flex-col items-center bg-red-950/10 border border-red-900/20 p-2 rounded-sm">
+                                                <span className="text-[9px] text-gray-500 uppercase font-bold">
+                                                    {attr === 'strength' ? '⚔️ FOR' : attr === 'agility' ? '💨 AGI' : attr === 'accuracy' ? '🎯 PON' : '💪 VIG'}
+                                                </span>
+                                                <span className="text-red-400 font-black text-sm">{needed}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </>
+                            )}
+
+                            {stats && Object.keys(stats).length > 0 && (
+                                <>
+                                    <h3 className="title-western text-gold text-center text-lg border-b border-gold/20 pb-2 mt-2 tracking-widest">
+                                        Atributos
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {Object.entries(stats).map(([stat, val]) => (
+                                            <div key={stat} className="flex justify-between items-center bg-gold/5 border border-gold/10 p-2 rounded-sm">
+                                                <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+                                                    {stat === 'strength' ? 'Força' :
+                                                        stat === 'agility' ? 'Agilidade' :
+                                                            stat === 'accuracy' ? 'Pontaria' :
+                                                                stat === 'vigor' ? 'Vigor' :
+                                                                    stat === 'defense' ? 'Defesa' :
+                                                                        stat === 'hp_current' ? 'Vida' :
+                                                                            stat === 'energy' ? 'Energia' : stat}
+                                                </span>
+                                                <span className="text-gold font-bold text-sm">{formatSigned(Number(val))}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

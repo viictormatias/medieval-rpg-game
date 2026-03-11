@@ -47,6 +47,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [lightboxAlt, setLightboxAlt] = useState<string | null>(null)
     const [lightboxStats, setLightboxStats] = useState<Record<string, number> | undefined>(undefined)
+    const [lightboxRequirements, setLightboxRequirements] = useState<Record<string, number> | undefined>(undefined)
 
     const FILTER_LABELS: Record<'all' | ItemType, string> = {
         all: 'Tudo',
@@ -174,7 +175,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-sm uppercase font-black border transition-all ${filter === f ? 'border-[#d4af37] text-[#d4af37] bg-[#d4af37]/10 shadow-[0_0_12px_rgba(212,175,55,0.3)]' : 'border-transparent text-[#a3907c] hover:text-[#d9c5b2]'}`}
+                            className={`px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-sm uppercase font-black border transition-all ${filter === f ? 'border-[#d4af37] text-[#d4af37] bg-[#d4af37]/10 shadow-[0_0_12px_rgba(212,175,55,0.33)]' : 'border-transparent text-[#a3907c] hover:text-[#d9c5b2]'}`}
                         >
                             {FILTER_LABELS[f]}
                         </button>
@@ -218,6 +219,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                                     setLightboxSrc(item.image_url ?? null)
                                                     setLightboxAlt(item.name)
                                                     setLightboxStats(item.stats)
+                                                    setLightboxRequirements(item.requirements)
                                                 }
                                             }}
                                         >
@@ -250,19 +252,23 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                     </div>
 
                                     {item.requirements && (
-                                        <div className={`text-[10px] md:text-sm mb-3 font-black uppercase tracking-tight ${reqStatus.meets ? 'text-green-400' : 'text-red-400'}`}>
-                                            Requisitos: {Object.entries(item.requirements).map(([k, v]) => `${(k === 'strength' ? '⚔️' : k === 'agility' ? '💨' : k === 'accuracy' ? '🎯' : '💪')} ${k.slice(0, 3).toUpperCase()} ${v}`).join(' | ')}
-                                            {!reqStatus.meets && (
-                                                <div className="mt-1 flex flex-col gap-0.5">
-                                                    <div className="text-red-500/80">Faltando:</div>
-                                                    {reqStatus.unmet.map((u: any) => (
-                                                        <div key={u.attr} className="flex justify-between items-center text-[9px] md:text-[11px] bg-red-950/20 px-1.5 py-0.5 rounded-xs border border-red-900/30">
-                                                            <span>{u.attr === 'strength' ? '⚔️ FOR' : u.attr === 'agility' ? '💨 AGI' : u.attr === 'accuracy' ? '🎯 PON' : '💪 VIG'}</span>
-                                                            <span className="text-red-300">Faltam {u.diff}</span>
+                                        <div className={`mt-2 mb-2 p-1.5 border rounded-sm ${reqStatus.meets ? 'bg-gold/5 border-gold/30' : 'bg-red-950/30 border-red-900/50'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${reqStatus.meets ? 'text-gold' : 'text-red-400'}`}>
+                                                Requisitos {reqStatus.meets ? 'Atendidos' : 'Insuficientes'}
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                {Object.entries(item.requirements as Record<string, number>).map(([attr, needed]) => {
+                                                    const current = (profile as any)[attr] || 0
+                                                    const isMet = current >= needed
+                                                    return (
+                                                        <div key={attr} className={`text-[11px] flex justify-between ${isMet ? 'text-gray-300' : 'text-red-300'}`}>
+                                                            <span>{attr === 'strength' ? '⚔️ FOR' : attr === 'agility' ? '💨 AGI' : attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {needed}</span>
+                                                            {!isMet && <span className="font-black">Faltam {needed - current}</span>}
+                                                            {isMet && <span className="text-[9px] opacity-50">✓</span>}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
@@ -337,6 +343,7 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                                                         setLightboxSrc(item.image_url ?? null)
                                                         setLightboxAlt(item.name)
                                                         setLightboxStats(item.stats)
+                                                        setLightboxRequirements(item.requirements)
                                                     }
                                                 }}
                                             >
@@ -360,6 +367,48 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
 
                                         <p className="text-xs md:text-base text-[#d9c5b2] leading-relaxed mb-3 italic font-medium">"{item.description}"</p>
 
+                                        <div className="text-[8px] md:text-[9px] text-gray-400 mb-2 flex gap-3 uppercase">
+                                            {item.scaling && <span>Escalonamento: <span className="text-gold">{Object.entries(item.scaling).map(([k, v]) => `${(k === 'strength' ? '⚔️ FOR' : k === 'agility' ? '💨 AGI' : k === 'accuracy' ? '🎯 PON' : '💪 VIG')} ${v}`).join(' | ')}</span></span>}
+                                        </div>
+
+                                        {item.requirements && (() => {
+                                            const req = checkItemRequirements(profile, item)
+                                            return (
+                                                <div className={`mt-2 mb-2 p-1.5 border rounded-sm ${req.meets ? 'bg-gold/5 border-gold/30' : 'bg-red-950/30 border-red-900/50'}`}>
+                                                    <div className={`text-[10px] font-black uppercase mb-1 ${req.meets ? 'text-gold' : 'text-red-400'}`}>
+                                                        Requisitos {req.meets ? 'Atendidos' : 'Insuficientes'}
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        {Object.entries(item.requirements as Record<string, number>).map(([attr, needed]) => {
+                                                            const current = (profile as any)[attr] || 0
+                                                            const isMet = current >= needed
+                                                            return (
+                                                                <div key={attr} className={`text-[11px] flex justify-between ${isMet ? 'text-gray-300' : 'text-red-300'}`}>
+                                                                    <span>{attr === 'strength' ? '⚔️ FOR' : attr === 'agility' ? '💨 AGI' : attr === 'accuracy' ? '🎯 PON' : '💪 VIG'} {needed}</span>
+                                                                    {!isMet && <span className="font-black">Faltam {needed - current}</span>}
+                                                                    {isMet && <span className="text-[9px] opacity-50">✓</span>}
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })()}
+
+                                        <div className="flex flex-wrap gap-1.5 md:gap-2.5 mb-4">
+                                            {item.stats && Object.entries(item.stats).map(([stat, val]) => (
+                                                <div key={stat} className="flex justify-between items-center bg-[#1a140f] p-1.5 md:p-2 rounded-sm border border-[#3a2a1a] min-w-[70px] md:min-w-[100px]">
+                                                    <span className="text-[9px] md:text-xs text-gray-500 font-black uppercase flex items-center gap-1">{(stat === 'strength' ? 'FORÇA' : stat === 'agility' ? 'AGILIDADE' : stat === 'accuracy' ? 'PONTARIA' : stat === 'vigor' ? 'VIGOR' : stat === 'defense' ? 'DEFESA' : stat === 'hp_current' ? 'VIDA' : stat === 'energy' ? 'ENERGIA' : stat.toUpperCase())}</span>
+                                                    <span className="text-gold font-black text-xs md:text-lg ml-2 md:ml-3">{formatSigned(Number(val))}</span>
+                                                </div>
+                                            ))}
+                                            {relicEffectsForDisplay(item).map(effect => (
+                                                <div key={effect} className="flex items-center bg-[#1a140f] p-1.5 md:p-2 rounded-sm border border-[#3a2a1a]">
+                                                    <span className="text-[9px] md:text-xs text-gold font-black uppercase">{effect}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
                                         <button
                                             onClick={() => handleSell(item)}
                                             disabled={actionId === item.inventoryId}
@@ -381,12 +430,13 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
                 onClose={() => {
                     setLightboxSrc(null)
                     setLightboxStats(undefined)
+                    setLightboxRequirements(undefined)
                 }}
                 alt={lightboxAlt || undefined}
                 stats={lightboxStats}
+                requirements={lightboxRequirements}
             />
         </div>
 
     )
 }
-

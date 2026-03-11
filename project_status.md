@@ -1,33 +1,24 @@
-## Project Status - 2026-03-10
+# Status do Projeto - Far West RPG
 
-### Resumo
-O projeto esta funcional e com progresso consistente em combate, economia, itens e progressao. As tarefas recentes pedidas foram implementadas no codigo e validadas com lint.
+## 1. Estado Atual
+O jogo está estável, com as mecânicas de progressão (nível 60) e caps de status (80) implementados. A economia e os itens foram balanceados. A interface de inventário e duelo está refinada.
 
-### Concluido
-- Seguranca server-side para acoes criticas de jogo.
-- Sistema de imagens com compressao automatica no build/dev (`prebuild` e `predev` com `scripts/optimize-images.mjs`).
-- Rebalanceamento global de itens (peso por raridade/slot/preco) com controle de `vigor`.
-- Progressao com limite de nivel maximo `60`.
-- Nova curva de XP mais dificil para progressao ate o nivel maximo.
-- Rebalanceamento de recompensas de arena (XP/Gold) com multiplicador por dificuldade relativa.
-- Rebalanceamento de recompensas de jobs com penalidade anti-farm para jobs muito abaixo do nivel do jogador.
-- Limitadores de atributos base no backend (`strength/defense/agility/accuracy/vigor` com cap de 80).
-- Onboarding atualizado: criacao sem distribuicao inicial e com `5` pontos livres para distribuir depois.
-- UI atualizada para curva de XP nova e exibicao de nivel maximo (`MAX`) em Header/Status.
+## 2. Funcionalidades Implementadas
+- **Cap de Nível:** 60 (com curva de XP ajustada).
+- **Cap de Atributos:** 80 (via banco de dados).
+- **Rebalanceamento Total:** Todos os itens de sets e base ajustados.
+- **Novas Armas Lendárias:** Imagens ultra-realistas geradas e aplicadas nos sets (Lobo, Xama, Fantasma, Xerife).
+- **Correção de Jobs:** Buffer de tempo adicionado para evitar erros de coleta (Corrigido).
 
-### Em Aberto / Dependencias Operacionais
-- Aplicar migration no banco para reforcar caps no Postgres:
-  - `supabase/migrations/20260310113000_cap_level_and_stats.sql`
-- Subir o ultimo lote de alteracoes para o GitHub (ainda local no workspace).
+## 3. Pendências Imediatas
+- Gerar imagens únicas para os 12 cards de trabalho (Aguardando reset de cota ou nova chave API).
+- Aplicar melhorias em itens comuns/incomuns que ainda usam templates repetidos (hue-shift).
 
-### Arquivos-chave alterados nesta etapa
-- `src/app/api/game/action/route.ts`
-- `src/lib/progression.ts`
-- `src/components/Header.tsx`
-- `src/components/StatusTab.tsx`
-- `src/components/ClassSelectionScreen.tsx`
-- `src/lib/gameActions.ts`
-- `supabase/migrations/20260310113000_cap_level_and_stats.sql`
+## 4. Erros ou Bloqueios Conhecidos
+- **API Quota:** Chaves de API atuais (Gemini/Leonardo) atingiram o limite de uso automatizado hoje.
+- **Geração Interna:** A cota interna de geração de imagens também foi atingida durante esta sessão.
 
-### Validacao
-- `npm run lint` executado com sucesso.
+## 5. Próximos Passos Sugeridos
+1. Assim que a cota resetar, rodar `node scripts/generate-job-images.mjs` para finalizar os cards de trabalho.
+2. Identificar mais 10 armas de tiers inferiores que ainda usam imagens repetidas para substituição.
+3. Testar o fluxo de "Claim Job" no jogo para confirmar se o buffer de 2s resolveu o problema para o usuário.
