@@ -35,12 +35,12 @@ function ItemIcon({ item, className = "" }: { item: any; className?: string }) {
 
 interface ShopTabProps {
     profile: Profile
-    onRefresh: () => void
+    onRefresh: (p?: Profile, i?: any[]) => void
+    initialInventory?: any[]
 }
 
-export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
+export default function ShopTab({ profile, onRefresh, initialInventory = [] }: ShopTabProps) {
     const [mode, setMode] = useState<'buy' | 'sell'>('buy')
-    const [invItems, setInvItems] = useState<any[]>([])
     const [actionId, setActionId] = useState<string | null>(null)
     const [filter, setFilter] = useState<'all' | ItemType>('all')
     const [sortBy, setSortBy] = useState<'rarity' | 'price_asc' | 'price_desc'>('rarity')
@@ -75,24 +75,20 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
     }
 
     const loadInventory = async () => {
-        const items = await getUserInventory(profile.id)
-        setInvItems(items || [])
+        onRefresh()
     }
 
-    useEffect(() => {
-        loadInventory()
-    }, [profile.id])
+    const invItems = initialInventory
 
     const handleBuy = async (item: Item) => {
         if (profile.gold < item.price) return
         setActionId(item.id)
 
-        const success = await buyItem(profile.id, item.id, item.price)
-        if (success) {
-            onRefresh()
-            loadInventory()
+        const result = await buyItem(profile.id, item.id, item.price)
+        if (result.success && result.data) {
+            onRefresh(result.data.profile, result.data.inventory)
         } else {
-            alert('Falha na compra. Tente novamente.')
+            alert(result.error || 'Falha na compra. Tente novamente.')
         }
 
         setActionId(null)
@@ -102,12 +98,11 @@ export default function ShopTab({ profile, onRefresh }: ShopTabProps) {
         const sellPrice = Math.floor(item.price * 0.5)
         setActionId(item.inventoryId)
 
-        const success = await sellItem(profile.id, item.inventoryId, sellPrice)
-        if (success) {
-            loadInventory()
-            onRefresh()
+        const result = await sellItem(profile.id, item.inventoryId, sellPrice)
+        if (result.success && result.data) {
+            onRefresh(result.data.profile, result.data.inventory)
         } else {
-            alert('Falha ao vender. Tente novamente.')
+            alert(result.error || 'Falha ao vender. Tente novamente.')
         }
 
         setActionId(null)

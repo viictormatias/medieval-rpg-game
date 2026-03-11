@@ -22,9 +22,29 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [inventory, setInventory] = useState<any[]>([])
   const isRefreshing = useRef(false)
+  const isRefreshingInv = useRef(false)
 
-  const refreshProfile = async () => {
+  const refreshInventory = async (pId: string) => {
+    if (isRefreshingInv.current) return
+    isRefreshingInv.current = true
+    try {
+      const { getUserInventory } = await import('@/lib/gameActions')
+      const items = await getUserInventory(pId)
+      setInventory(items || [])
+    } finally {
+      isRefreshingInv.current = false
+    }
+  }
+
+  const refreshProfile = async (manualProfile?: Profile, manualInventory?: any[]) => {
+    if (manualProfile) {
+      setProfile(manualProfile)
+      if (manualInventory) setInventory(manualInventory)
+      return
+    }
+
     if (isRefreshing.current) return
     isRefreshing.current = true
 
@@ -55,8 +75,10 @@ export default function Dashboard() {
           if (s) {
             const data = await ensureProfile()
             setProfile(data)
+            if (data) refreshInventory(data.id)
           } else {
             setProfile(null)
+            setInventory([])
           }
         })(),
         timeoutPromise,
@@ -114,6 +136,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
+    if (activeTab === 'inventory' && profile) {
+      refreshInventory(profile.id)
+    }
   }, [activeTab])
 
   if (error) {
@@ -276,7 +301,7 @@ export default function Dashboard() {
                 <ShopTab profile={profile} onRefresh={refreshProfile} />
               </div>
               <div className={activeTab === 'inventory' ? 'block' : 'hidden'}>
-                <InventoryTab profile={profile} onRefresh={refreshProfile} isActive={activeTab === 'inventory'} />
+                <InventoryTab profile={profile} onRefresh={refreshProfile} inventory={inventory} isActive={activeTab === 'inventory'} />
               </div>
               <div className={activeTab === 'status' ? 'block' : 'hidden'}>
                 <StatusTab profile={profile} onRefresh={refreshProfile} />
@@ -286,7 +311,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <footer className="w-full py-6 md:py-8 text-center text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.4em] text-gray-700 z-20 px-4">
+      <footer className="relative w-full py-6 md:py-8 text-center text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.4em] text-gray-700 z-20 px-4">
         Far West (c) 2026 - Poeira, chumbo e glória - Victor Matias
       </footer>
     </main>

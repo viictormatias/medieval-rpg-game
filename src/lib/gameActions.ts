@@ -70,7 +70,7 @@ const ENERGY_REGEN_INTERVAL_SECONDS = 360
 const HP_REGEN_INTERVAL_SECONDS = 30
 const HP_REGEN_FULL_HEAL_SECONDS = 600
 
-type SecureActionResponse<T = any> = {
+export type SecureActionResponse<T = any> = {
     success: boolean
     data?: T
     error?: string
@@ -168,16 +168,12 @@ function previewSyncedVitals(profile: Profile): Profile {
     }
 }
 
-/**
- * Tenta buscar o perfil do usuário logado (anônimo ou credencial).
- */
 export async function ensureProfile(): Promise<Profile | null> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return null
 
     const currentUser = session.user
 
-    // Tenta buscar o perfil
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -185,11 +181,9 @@ export async function ensureProfile(): Promise<Profile | null> {
         .maybeSingle()
 
     if (profileError || !profile) {
-        console.log('[DEBUG-PROFILE] No profile found for user:', currentUser.id, 'Error:', profileError);
-        return null // Precisamos de seleção de classe
+        return null
     }
 
-    // Validação estrita: Nome deve ter pelo menos 3 caracteres, não ser um padrão de sistema, e ter classe/HP válidos
     const isSystemName = profile.username && (
         profile.username.startsWith('Jogador_') ||
         profile.username.startsWith('Novo Jogador')
@@ -198,22 +192,14 @@ export async function ensureProfile(): Promise<Profile | null> {
     const hasValidStats = profile.class && profile.hp_max > 0
 
     if (!hasValidName || !hasValidStats) {
-        console.warn(`[AUTH] Perfil incompleto ou padrão detectado para o usuário ${currentUser.id} (${profile.username}). Redirecionando para criação.`)
         return null
     }
 
-    console.log('[DEBUG-PROFILE] Perfil carregado com sucesso:', {
-        username: profile.username,
-        class: profile.class,
-        level: profile.level,
-        id: profile.id
-    });
     const secureSync = await callSecureAction<Profile>('sync_vitals')
     if (secureSync.success && secureSync.data) {
         return secureSync.data
     }
 
-    // Fallback local sem escrita no banco: mantém regen visual mesmo sem SERVICE_ROLE no servidor.
     return previewSyncedVitals(profile)
 }
 
@@ -248,25 +234,28 @@ export async function getUserInventory(profileId: string) {
     return error ? [] : data
 }
 
-export async function buyItem(profileId: string, itemId: string, price: number): Promise<boolean> {
-    if (!profileId) return false
+export async function buyItem(profileId: string, itemId: string, price: number): Promise<SecureActionResponse<{ profile: Profile; inventory: any[] }>> {
+    if (!profileId) return { success: false, error: 'Perfil não identificado.' }
     const result = await callSecureAction('buy_item', { itemId })
-    if (!result.success) console.error('[SECURE-BUY] Falha na compra:', result.error, { itemId, price })
-    return result.success
+    return result
 }
 
-export async function sellItem(profileId: string, inventoryId: string, sellPrice: number): Promise<boolean> {
-    if (!profileId) return false
+export async function sellItem(profileId: string, inventoryId: string, sellPrice: number): Promise<SecureActionResponse<{ profile: Profile; inventory: any[] }>> {
+    if (!profileId) return { success: false, error: 'Perfil não identificado.' }
     const result = await callSecureAction('sell_item', { inventoryId })
-    if (!result.success) console.error('[SECURE-SELL] Falha na venda:', result.error, { inventoryId, sellPrice })
-    return result.success
+    return result
 }
 
-export async function toggleEquip(profileId: string, inventoryId: string): Promise<boolean> {
-    if (!profileId) return false
+export async function toggleEquip(profileId: string, inventoryId: string): Promise<SecureActionResponse<{ profile: Profile; inventory: any[] }>> {
+    if (!profileId) return { success: false, error: 'Perfil não identificado.' }
     const result = await callSecureAction('toggle_equip', { inventoryId })
-    if (!result.success) console.error('[SECURE-EQUIP] Falha ao alternar equipamento:', result.error, { inventoryId })
-    return result.success
+    return result
+}
+
+export async function consumeItem(profileId: string, inventoryId: string): Promise<SecureActionResponse<{ profile: Profile; inventory: any[]; message: string }>> {
+    if (!profileId) return { success: false, error: 'Perfil não identificado.' }
+    const result = await callSecureAction('consume_item', { inventoryId })
+    return result
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -294,16 +283,12 @@ export async function getEnemies(): Promise<Enemy[]> {
 export async function startJobAction(profileId: string, job: Job) {
     if (!profileId || !job?.id) return false
     const result = await callSecureAction('start_job', { jobId: job.id })
-    if (!result.success) console.error('[SECURE-JOB] Falha ao iniciar missão:', result.error, { jobId: job.id })
     return result.success
 }
 
 export async function claimJobAction(profile: Profile, job: Job) {
     if (!profile?.id) return false
     const result = await callSecureAction('claim_job')
-    if (!result.success) {
-        console.error('[SECURE-JOB] Falha ao coletar missão:', result.error, { profileId: profile.id, jobId: job?.id })
-    }
     return result.success
 }
 
@@ -311,32 +296,23 @@ export async function distributeStats(profileId: string, attr: 'strength' | 'agi
     if (!profileId || points <= 0) return false
     const allocations: InitialStatAllocation = { [attr]: points } as InitialStatAllocation
     const result = await callSecureAction('distribute_stats_batch', { allocations })
-    if (!result.success) console.error('[SECURE-STATS] Falha ao distribuir pontos:', result.error, { attr, points })
     return result.success
 }
 
 export async function distributeStatsBatch(profileId: string, allocations: InitialStatAllocation): Promise<boolean> {
     if (!profileId) return false
     const result = await callSecureAction('distribute_stats_batch', { allocations })
-    if (!result.success) console.error('[SECURE-STATS] Falha no lote de atributos:', result.error, allocations)
     return result.success
-}
-
-export async function awardCombatRewards(profileId: string, xpGain: number, goldGain: number): Promise<boolean> {
-    console.warn('[SECURE] awardCombatRewards está desativado no cliente. Use resolveArenaCombat via servidor.', { profileId, xpGain, goldGain })
-    return false
 }
 
 export async function beginArenaCombat(profileId: string, enemyId: string): Promise<{ success: boolean; ticket?: string; error?: string }> {
     if (!profileId || !enemyId) {
         return { success: false, error: 'Parâmetros inválidos para iniciar duelo.' }
     }
-
     const result = await callSecureAction<{ ticket: string }>('begin_arena', { enemyId })
     if (!result.success || !result.data?.ticket) {
         return { success: false, error: result.error || 'Falha ao iniciar duelo seguro.' }
     }
-
     return { success: true, ticket: result.data.ticket }
 }
 
@@ -348,46 +324,13 @@ export async function resolveArenaCombat(
     combatTicket?: string
 ): Promise<CombatResolution> {
     if (!profileId || !enemy?.id || !combatTicket) {
-        return {
-            success: false,
-            playerWon: false,
-            xpGain: 0,
-            goldGain: 0,
-            energyCost: COMBAT_ENERGY_COST,
-            hpAfter: Math.max(1, Math.floor(hpAfterCombat || 1))
-        }
+        return { success: false } as any
     }
-
     const result = await callSecureAction<CombatResolution>('resolve_arena', {
         enemyId: enemy.id,
-        combatTicket,
-        // Mantidos apenas para auditoria de divergência entre cliente e servidor.
-        clientPlayerWon: playerWon,
-        clientHpAfterCombat: hpAfterCombat
+        playerWon,
+        hpAfterCombat,
+        combatTicket
     })
-
-    if (!result.success || !result.data) {
-        console.error('[SECURE-ARENA] Falha ao resolver duelo:', result.error, { enemyId: enemy.id })
-        return {
-            success: false,
-            playerWon: false,
-            xpGain: 0,
-            goldGain: 0,
-            energyCost: COMBAT_ENERGY_COST,
-            hpAfter: Math.max(1, Math.floor(hpAfterCombat || 1))
-        }
-    }
-
-    return result.data
+    return result.data || { success: false } as any
 }
-export async function consumeItem(profileId: string, inventoryId: string, _item: Item): Promise<{ success: boolean; message: string }> {
-    if (!profileId) return { success: false, message: 'Perfil inválido.' }
-    const result = await callSecureAction<{ success: boolean; message: string }>('consume_item', { inventoryId })
-
-    if (!result.success) {
-        return { success: false, message: result.error || 'Falha ao consumir item.' }
-    }
-
-    return result.data || { success: false, message: 'Falha ao consumir item.' }
-}
-

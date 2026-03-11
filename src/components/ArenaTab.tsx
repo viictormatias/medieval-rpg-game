@@ -455,20 +455,34 @@ export default function ArenaTab({ profile, onRefresh }: { profile: Profile; onR
         }
 
         const enemyEq = getEnemyEquipment(selectedEnemy, CATALOG_ITEMS)
-        const enemyVigorBonus = (enemyEq.armor || []).reduce((sum, item) => sum + (item.stats?.vigor || 0), 0)
-        const enemyMaxHp = baseEnemyStats.hp_max + enemyVigorBonus
+        
+        // Calcular bônus totais dos equipamentos do inimigo
+        const enemyBonuses = (enemyEq.armor || []).reduce((acc, it) => {
+            if (it.stats) {
+                Object.entries(it.stats).forEach(([k, v]) => {
+                    (acc as any)[k] = ((acc as any)[k] || 0) + v
+                })
+            }
+            return acc
+        }, { strength: 0, defense: 0, agility: 0, accuracy: 0, vigor: 0 })
+
+        const enemyWeapon = enemyEq.weapon as any
+        const enemyWeaponMin = enemyWeapon?.stats?.minDamage || Math.floor(baseEnemyStats.strength * 0.8)
+        const enemyWeaponMax = enemyWeapon?.stats?.maxDamage || Math.floor(baseEnemyStats.strength * 1.2)
+
+        const enemyMaxHp = baseEnemyStats.hp_max + (enemyBonuses.vigor * 10)
         setEnemyHp(enemyMaxHp)
 
         const enemyFighter: Fighter = {
             name: selectedEnemy.name,
             hp: enemyMaxHp,
-            strength: baseEnemyStats.strength,
-            defense: baseEnemyStats.defense,
-            agility: baseEnemyStats.agility,
-            accuracy: baseEnemyStats.accuracy,
-            minDamage: Math.floor(baseEnemyStats.strength * 0.8),
-            maxDamage: Math.floor(baseEnemyStats.strength * 1.2),
-            weaponName: enemyEq.weapon?.name || 'Punhos'
+            strength: baseEnemyStats.strength + enemyBonuses.strength,
+            defense: baseEnemyStats.defense + enemyBonuses.defense,
+            agility: baseEnemyStats.agility + enemyBonuses.agility,
+            accuracy: baseEnemyStats.accuracy + enemyBonuses.accuracy,
+            minDamage: enemyWeaponMin,
+            maxDamage: enemyWeaponMax,
+            weaponName: enemyWeapon?.name || 'Punhos'
         }
 
         const result = simulateCombat(playerFighter, enemyFighter)

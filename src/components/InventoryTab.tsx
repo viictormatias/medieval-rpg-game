@@ -34,13 +34,13 @@ function ItemIcon({ item, className = "" }: { item: any; className?: string }) {
 
 interface InventoryTabProps {
     profile: Profile
-    onRefresh: () => void
+    onRefresh: (p?: Profile, i?: any[]) => void
+    inventory: any[]
     isActive?: boolean
 }
 
-export default function InventoryTab({ profile, onRefresh, isActive }: InventoryTabProps) {
-    const [invItems, setInvItems] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+export default function InventoryTab({ profile, onRefresh, inventory, isActive }: InventoryTabProps) {
+    const [loading, setLoading] = useState(false)
     const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
     const [selectedItem, setSelectedItem] = useState<any | null>(null)
     const [filter, setFilter] = useState<'all' | ItemType>('all')
@@ -85,9 +85,8 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const formatSigned = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
     const loadInventory = async () => {
-        const items = await getUserInventory(profile.id)
-        setInvItems(items || [])
-        setLoading(false)
+        // Agora o inventário vem via props do Dashboard
+        onRefresh()
     }
 
     useEffect(() => {
@@ -97,15 +96,16 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     }, [profile.id, isActive])
 
     const handleToggleEquip = async (inventoryId: string) => {
-        const success = await toggleEquip(profile.id, inventoryId)
-        if (success) { loadInventory(); onRefresh() }
+        const result = await toggleEquip(profile.id, inventoryId)
+        if (result.success && result.data) {
+            onRefresh(result.data.profile, result.data.inventory)
+        }
     }
 
     const handleSellItem = async (inventoryId: string, sellPrice: number) => {
-        const success = await sellItem(profile.id, inventoryId, sellPrice)
-        if (success) {
-            loadInventory()
-            onRefresh()
+        const result = await sellItem(profile.id, inventoryId, sellPrice)
+        if (result.success && result.data) {
+            onRefresh(result.data.profile, result.data.inventory)
         } else {
             alert('Erro ao vender item. Certifique-se de que não está equipado.')
         }
@@ -129,7 +129,7 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
         return 'common'
     }
 
-    const itemsWithDetails = invItems.map(invEntry => {
+    const itemsWithDetails = inventory.map(invEntry => {
         const spec = getItemById(invEntry.item_id)
         if (!spec) return null
         return { ...spec, quantity: invEntry.quantity || 1, is_equipped: invEntry.is_equipped, inventory_id: invEntry.id }
@@ -180,12 +180,12 @@ export default function InventoryTab({ profile, onRefresh, isActive }: Inventory
     const handleItemClick = async (item: any, req: any) => {
         if (!item) return
         if (item.type === 'consumable') {
-            // item.inventory_id is now safely the database UUID
-            const res = await consumeItem(profile.id, item.inventory_id, item)
-            alert(res.message)
-            if (res.success) {
-                loadInventory()
-                onRefresh()
+            const res = await consumeItem(profile.id, item.inventory_id)
+            if (res.success && res.data) {
+                onRefresh(res.data.profile, res.data.inventory)
+                if (res.data.message) alert(res.data.message)
+            } else {
+                alert(res.error || 'Erro ao usar item.')
             }
         } else {
             // Always allow opening Lightbox if there is an image

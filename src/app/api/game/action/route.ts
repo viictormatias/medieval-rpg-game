@@ -647,13 +647,15 @@ export async function POST(req: Request) {
       }
 
       const currentGold = Number(rawProfile.gold || 0)
-      const { error: goldError } = await admin
+      const { data: updatedProfile, error: goldError } = await admin
         .from('profiles')
         .update({ gold: currentGold - price })
         .eq('id', userId)
         .eq('gold', currentGold)
+        .select('*')
+        .single()
 
-      if (goldError) return fail('Falha ao debitar ouro.', 500)
+      if (goldError || !updatedProfile) return fail('Falha ao debitar ouro.', 500)
 
       const { error: invError } = await admin
         .from('inventory')
@@ -667,7 +669,8 @@ export async function POST(req: Request) {
         return fail('Falha ao concluir compra.', 500)
       }
 
-      return ok({ success: true })
+      const { data: inventory } = await admin.from('inventory').select('*').eq('profile_id', userId)
+      return ok({ profile: updatedProfile, inventory })
     }
 
     if (action === 'sell_item') {
@@ -701,14 +704,17 @@ export async function POST(req: Request) {
       }
 
       const profile = await getProfile(admin, userId)
-      const { error: goldError } = await admin
+      const { data: updatedProfile, error: goldError } = await admin
         .from('profiles')
         .update({ gold: Number(profile.gold || 0) + sellPrice })
         .eq('id', userId)
+        .select('*')
+        .single()
 
-      if (goldError) return fail('Falha ao creditar ouro da venda.', 500)
+      if (goldError || !updatedProfile) return fail('Falha ao creditar ouro da venda.', 500)
 
-      return ok({ success: true, sellPrice })
+      const { data: inventory } = await admin.from('inventory').select('*').eq('profile_id', userId)
+      return ok({ profile: updatedProfile, inventory, sellPrice })
     }
 
     if (action === 'toggle_equip') {
@@ -772,7 +778,9 @@ export async function POST(req: Request) {
 
       if (toggleError) return fail('Falha ao atualizar equipamento.', 500)
 
-      return ok({ success: true })
+      const profile = await getProfile(admin, userId)
+      const { data: inventory } = await admin.from('inventory').select('*').eq('profile_id', userId)
+      return ok({ profile, inventory })
     }
 
     if (action === 'consume_item') {
@@ -825,7 +833,7 @@ export async function POST(req: Request) {
         return fail('Não foi possível consumir o item.', 500)
       }
 
-      const { error: updateError } = await admin
+      const { data: updatedProfile, error: updateError } = await admin
         .from('profiles')
         .update({
           hp_current: Number(profile.hp_current || 0) + hpGain,
@@ -833,14 +841,17 @@ export async function POST(req: Request) {
           last_regen_at: new Date().toISOString(),
         })
         .eq('id', userId)
+        .select('*')
+        .single()
 
-      if (updateError) return fail('Erro ao aplicar efeito do item.', 500)
+      if (updateError || !updatedProfile) return fail('Erro ao aplicar efeito do item.', 500)
 
       const msgParts: string[] = []
       if (hpGain > 0) msgParts.push(`${hpGain} PV`)
       if (energyGain > 0) msgParts.push(`${energyGain} Energia`)
 
-      return ok({ success: true, message: `Você recuperou ${msgParts.join(' e ')}!` })
+      const { data: inventory } = await admin.from('inventory').select('*').eq('profile_id', userId)
+      return ok({ profile: updatedProfile, inventory, message: `Você recuperou ${msgParts.join(' e ')}!` })
     }
 
     if (action === 'distribute_stats_batch') {
@@ -911,8 +922,8 @@ export async function POST(req: Request) {
     if (action === 'resolve_arena') {
       const enemyId = String(payload.enemyId || '')
       const combatTicket = String(payload.combatTicket || '')
-      const clientPlayerWon = payload.clientPlayerWon === true
-      const clientHpAfterCombat = Number(payload.clientHpAfterCombat)
+      const playerWon = payload.playerWon === true
+      const hpAfterCombat = Number(payload.hpAfterCombat)
       assertUuid(enemyId, 'enemyId')
 
       if (!combatTicket || combatTicket.length < 20) {
@@ -956,7 +967,7 @@ export async function POST(req: Request) {
       const rawWinChance = playerPower / Math.max(1, playerPower + enemyPower)
       const winChance = Math.max(0.1, Math.min(0.9, rawWinChance))
       const serverPredictedWon = Math.random() <= winChance
-      const playerWon = clientPlayerWon
+      // Mantemos a confiança no cliente por enquanto, mas usando a chave certa
 
       const rewards = playerWon
         ? getArenaRewards(enemy)
@@ -981,8 +992,8 @@ export async function POST(req: Request) {
         ? Math.max(1, Math.floor(Math.random() * 12))
         : Math.max(8, Math.floor(Math.random() * 25))
 
-      const safeHpAfter = Number.isFinite(clientHpAfterCombat)
-        ? Math.max(1, Math.min(Number(profile.hp_max || 100), Math.floor(clientHpAfterCombat)))
+      const safeHpAfter = Number.isFinite(hpAfterCombat)
+        ? Math.max(1, Math.min(Number(profile.hp_max || 100), Math.floor(hpAfterCombat)))
         : Math.max(1, Number(profile.hp_current || 1) - randomHpDelta)
       const nextEnergy = Math.max(0, Number(profile.energy || 0) - COMBAT_ENERGY_COST)
 
