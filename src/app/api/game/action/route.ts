@@ -16,7 +16,7 @@ const ONBOARDING_STAT_POINTS = 5
 const ONBOARDING_FREE_STAT_POINTS = 0
 const ONBOARDING_MAX_PER_STAT = 8
 const COMBAT_ENERGY_COST = 0
-const ARENA_TICKET_TTL_MS = 3 * 60 * 1000
+const ARENA_TICKET_TTL_MS = 10 * 60 * 1000
 
 type ClassType = 'Pistoleiro' | 'Xerife' | 'Forasteiro' | 'Pregador' | 'Nativo' | 'Vendedor' | 'CacadorDeRecompensas'
 type StatKey = 'strength' | 'defense' | 'agility' | 'accuracy' | 'vigor'

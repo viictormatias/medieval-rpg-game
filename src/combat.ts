@@ -29,8 +29,7 @@ export interface CombatResult {
     history: NarrativeTurn[];
 }
 
-
-const MAX_TURNS = 60;
+const MAX_TURNS = 120;
 
 const NARRATIVE_TEMPLATES = {
     firearm_miss: [
@@ -84,7 +83,7 @@ const NARRATIVE_TEMPLATES = {
         "O fio de {weapon} morde {art_def} {bodyPart} de {defender}.",
         "{attacker} desfere um golpe pesado {art_prep} {bodyPart}.",
         "O aço de {weapon} encontra {art_def} {bodyPart} de {defender}.",
-        "{attacker} avança e acerta {art_def} {bodyPart} com {weapon}.",
+        "{attacker} avança e acerta {art_def} {bodyPart} with {weapon}.",
         "Com um movimento rápido, {attacker} fere {art_def} {bodyPart}.",
         "{weapon} arranha {art_def} {bodyPart} — {defender} grunhe de dor.",
         "{attacker} gira o corpo e conecta {weapon} {art_prep} {bodyPart}."
