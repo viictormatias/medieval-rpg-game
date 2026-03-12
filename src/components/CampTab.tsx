@@ -37,9 +37,10 @@ const JOB_CARD_IMAGES: Array<{ keywords: string[]; image: string }> = [
     { keywords: ['caravana', 'sal', 'deserto'], image: '/images/jobs/salt_caravan.jpg' },
     { keywords: ['trem', 'express'], image: '/images/jobs/train_heist.jpg' },
     { keywords: ['banco', 'assalto'], image: '/images/jobs/bank_heist.jpg' },
-    { keywords: ['forte', 'vigilia'], image: '/images/jobs/frontier_patrol.jpg' },
-    { keywords: ['contrabando', 'rota longa'], image: '/images/jobs/black_market.jpg' },
-    { keywords: ['expedicao', 'expedição', 'canyon'], image: '/images/jobs/salt_caravan.jpg' },
+    { keywords: ['forte', 'vigilia'], image: '/images/jobs/fort_vigil.jpg' },
+    { keywords: ['contrabando', 'rota longa'], image: '/images/jobs/contraband_route.jpg' },
+    { keywords: ['expedicao', 'expedição', 'canyon'], image: '/images/jobs/forgotten_canyon.jpg' },
+    { keywords: ['lendário', 'lendario', 'fugitivo', 'legendary'], image: '/images/jobs/bounty_hunt_legendary.jpg' },
 ]
 
 function getJobCardImage(title: string): string {
@@ -137,7 +138,7 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                     return (
                         <div
                             key={job.id}
-                            className={`western-border p-4 md:p-5 flex flex-col gap-3 md:gap-4 fade-in-up transition-all duration-300 relative
+                            className={`western-border flex flex-col fade-in-up transition-all duration-300 relative overflow-hidden bg-[#0a0705]
                 ${isActive ? 'border-gold' : ''}
                 ${isOtherBusy ? 'opacity-40 grayscale pointer-events-none' : ''}
                 ${profile.level < job.min_level ? 'opacity-60 grayscale' : ''}
@@ -145,20 +146,32 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                             style={{
                                 animationDelay: `${idx * 60}ms`,
                                 boxShadow: isActive ? '0 0 20px rgba(242,185,13,0.15), inset 0 0 15px rgba(0,0,0,0.4)' : undefined,
-                                backgroundImage: `linear-gradient(135deg, rgba(10,7,5,0.92), rgba(20,14,10,0.78)), url("${jobImage}")`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                backgroundBlendMode: 'normal',
                             }}
                         >
-                            {/* WANTED POSTER HEADER */}
-                            <div className="absolute top-2 left-0 right-0 flex justify-center opacity-30 pointer-events-none">
-                                <span className="font-serif text-2xl md:text-3xl tracking-[0.2em] text-red-900 font-bold mix-blend-color-burn" style={{ WebkitTextStroke: '1px #b22222' }}>
-                                    WANTED
-                                </span>
+                            {/* IMAGEM NO TOPO */}
+                            <div className="w-full h-32 md:h-40 shrink-0 relative border-b-2 border-[#423020]">
+                                <img 
+                                    src={jobImage} 
+                                    alt={job.title} 
+                                    className="w-full h-full object-cover relative z-0"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        const img = e.currentTarget;
+                                        if (img.src !== (window.location.origin + '/images/jobs/frontier_patrol.jpg')) {
+                                            img.src = '/images/jobs/frontier_patrol.jpg';
+                                        }
+                                    }}
+                                />
+                                {/* WANTED POSTER OVERLAY */}
+                                <div className="absolute inset-0 z-10 flex items-center justify-center opacity-40 pointer-events-none bg-gradient-to-t from-black/60 to-transparent">
+                                    <span className="font-serif text-3xl md:text-4xl tracking-[0.2em] text-red-900 font-bold mix-blend-hard-light" style={{ WebkitTextStroke: '1px #b22222' }}>
+                                        WANTED
+                                    </span>
+                                </div>
                             </div>
 
-                            <div className="flex items-start justify-between relative mt-4">
+                            <div className="p-4 md:p-5 flex flex-col gap-3 md:gap-4 flex-1">
+                                <div className="flex items-start justify-between relative mt-2">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 md:w-14 md:h-14 bg-[#2b1f14] border-2 border-[#423020] rounded-sm flex items-center justify-center text-xl md:text-2xl shadow-inner">
                                         {jobIcon}
@@ -221,7 +234,7 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                                             <span className="text-green-400 animate-pulse">✅ Missão concluída!</span>
                                         )}
                                     </div>
-                                    {timeLeft === 0 && profile.job_finish_at && new Date(profile.job_finish_at).getTime() <= Date.now() && (
+                                    {timeLeft === 0 && profile.job_finish_at && (
                                         <button
                                             onClick={handleClaim}
                                             disabled={isClaiming}
@@ -247,12 +260,12 @@ export default function CampTab({ profile, onRefresh }: { profile: Profile; onRe
                                                 : '▶ INICIAR MISSÃO'}
                                 </button>
                             )}
+                            </div>
                         </div>
                     )
                 })}
             </div>
         </div>
-
     )
 }
 

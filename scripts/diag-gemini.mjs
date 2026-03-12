@@ -1,4 +1,4 @@
-const apiKey = 'AIzaSyDOoMk3Vd0rw5pKLAwzuIGLapr2h_ts8A0';
+const apiKey = process.env.GOOGLE_AI_API_KEY || 'MISSING_API_KEY';
 const model = 'gemini-2.0-flash-exp-image-generation';
 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
